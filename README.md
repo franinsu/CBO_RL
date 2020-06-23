@@ -77,9 +77,9 @@ def sample_trajectory(s_0, α, σ, ϵ, m):
     parameters:
     s_0  : Starting state of particle
     α    : Drift function
-    σ:   Variance function
-    ϵ:   Step size
-    m:   Number of steps to sample
+    σ    : Noise scale function
+    ϵ    : Step size
+    m    : Number of steps to sample
     
     returns:
     S:   torch.tensor of sampled trajectory, with size (m, *s_0.size())
@@ -223,8 +223,8 @@ def algorithm_1(V_net, M, epochs,γ,τ, S, R, α,σ,ϵ, V_net_comp=None, n=100):
         for i,B_θ in enumerate(tqdm(B,leave=False,desc="Batch")): 
             s = S[B_θ]
             s_1 = S[B_θ+1]
-            s_p1 = s+α(s)*ϵ+σ(s)*torch.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
-            f_p = R[B_θ] + γ*V_net(s_p1) - V_net(s)
+            ŝ_1 = s+α(s)*ϵ+σ(s)*torch.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
+            f_p = R[B_θ] + γ*V_net(ŝ_1) - V_net(s)
             f = R[B_θ] + γ*V_net(s_1) - V_net(s)
             V_net.zero_grad()
             f_p.backward(f)
@@ -437,9 +437,10 @@ plt.subplots_adjust(right=0.9)
 
 
 ```python
-def algorithm_CBO(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=None, n_comp=100):
+def algorithm_CBO(V_net, V_s, S, M, m, epochs, γ,λ,τ,η, β_k, V_net_comp=None, n_comp=100):
     '''
-    Implementation of CBO algorithm to minimize J = E[(1/2)E[f(s_{m},s_{m+1};θ)|s_{m}]^2]
+    Implementation of CBO algorithm to minimize
+    J = E[(1/2)E[f(s_{m},s_{m+1};θ)|s_{m}]^2]
     
     Parameters:
         V_net      : Net class 
@@ -450,9 +451,9 @@ def algorithm_CBO(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=None, 
         epochs     : Number of epochs
         γ          : Discount factor
         λ          : Exploitation rate
-        σ          : Exploration rate
+        τ          : Exploration rate
         η          : Learning rate          
-        β          : Characteristic temperatures
+        β_k        : 1/(Characteristic energy), as a function of epochs
         V_net_comp : Net to compare V_net to
         n_comp     : Number of points to use to compare V_net and V_net_comp
         
@@ -470,6 +471,7 @@ def algorithm_CBO(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=None, 
             e = [comp(V_net,V_net_comp,x_ls, n_comp)]
         for k in trange(epochs, leave=False, desc="Epoch"):
             B, Rem = gen_batches(N,M, Rem)
+            β = β_k(k)
             for i, B_θ in enumerate(tqdm(B,leave=False,desc="Batch")):
                 A_θ = torch.randperm(n-1)[:m]
                 s = S[A_θ]
@@ -483,10 +485,7 @@ def algorithm_CBO(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=None, 
                     x_new = xX_tensor[0]
                     X_new = xX_tensor[1:]
                     x_new = mu.view(1,-1).mm(X_new)/torch.sum(mu)
-                    # Particle-wise noise              
-                    #  X_new += -λ*η*(X_new-x_new)+σ*np.sqrt(η)*torch.diag(torch.normal(torch.zeros(M))).mm(X_new-x_new)
-                    # Parameter-particle-wise noise
-                    X_new += -λ*η*(X_new-x_new)+σ*np.sqrt(η)*torch.normal(torch.zeros(X_new.size()))*(X_new-x_new)
+                    X_new += -λ*η*(X_new-x_new)+τ*np.sqrt(η)*torch.normal(torch.zeros(X_new.size()))*(X_new-x_new)
                     xX_new = torch.cat((x_new,X_new)).view(-1, *xX[0].size())
                     for xX_j, xX_new_j in zip(xX,xX_new):
                         xX_j +=  xX_new_j - xX_j
@@ -500,22 +499,25 @@ def algorithm_CBO(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=None, 
 
 
 ```python
-def algorithm_CBO_BFF(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=None, n_comp=100):
+def algorithm_CBO_UR(V_net, V_s, S, α,σ, M, m, epochs, γ,λ,τ,η,β_k, V_net_comp=None, n_comp=100):
     '''
-    Implementation of CBO algorithm to minimize J̃ = E[(1/2)E[f(s_{m},s_{m+1};θ)|s_{m}]E[f(s_{m},s̃_{m+1};θ)|s_{m}]]
-    
+    Implementation of CBO algorithm to minimize 
+    Ĵ = E[(1/2)E[f(s_{m},s_{m+1};θ)|s_{m}]E[f(s_{m},ŝ_{m+1};θ)|s_{m}]]
+    where ŝ_{m+1} is generated from the dynamics, α, and σ
     Parameters:
         V_net      : Net class 
         V_s        : List of Nets (corresponding to particles in CBO)
         S          : Sample trajectory
+        α          : Drift function
+        σ          : Noise scale function
         M          : Size of batches in X
         m          : Size of batches in S (set to S.size()[0] for no approximations)
         epochs     : Number of epochs
         γ          : Discount factor
         λ          : Exploitation rate
-        σ          : Exploration rate
+        τ          : Exploration rate
         η          : Learning rate          
-        β          : Characteristic temperatures
+        β_k          : 1/(Characteristic energy), as a function of epochs
         V_net_comp : Net to compare V_net to
         n_comp     : Number of points to use to compare V_net and V_net_comp
         
@@ -533,6 +535,71 @@ def algorithm_CBO_BFF(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=No
             e = [comp(V_net,V_net_comp,x_ls, n_comp)]
         for k in trange(epochs, leave=False, desc="Epoch"):
             B, Rem = gen_batches(N,M, Rem)
+            β = β_k(k)
+            for i, B_θ in enumerate(tqdm(B,leave=False,desc="Batch")):
+                A_θ = torch.randperm(n-2)[:m]
+                s = S[A_θ]
+                s_1 = S[A_θ+1]
+                s_2 = S[A_θ+2]
+                ŝ_1 = s+α(s)*ϵ+σ(s)*torch.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
+                V_θ = [V_j for j,V_j in enumerate(V_s) if j in B_θ]
+                f = torch.cat([R[A_θ] + γ*V_j(s_1)-V_j(s) for V_j in V_θ],1)
+                f̂ = torch.cat([R[A_θ] + γ*V_j(ŝ_1)-V_j(s) for V_j in V_θ],1)
+                L = torch.sum(f*f̃,0)/(2*m)
+                mu = torch.exp(-β*L)
+                for xX in zip(V_net.parameters(),*[V_j.parameters() for V_j in V_θ]):
+                    xX_tensor = torch.cat([xX_j.view(1,-1) for xX_j in xX])
+                    x_new = xX_tensor[0]
+                    X_new = xX_tensor[1:]
+                    x_new = mu.view(1,-1).mm(X_new)/torch.sum(mu)
+                    X_new += -λ*η*(X_new-x_new)+τ*np.sqrt(η)*torch.normal(torch.zeros(X_new.size()))*(X_new-x_new)
+                    xX_new = torch.cat((x_new,X_new)).view(-1, *xX[0].size())
+                    for xX_j, xX_new_j in zip(xX,xX_new):
+                        xX_j +=  xX_new_j - xX_j
+                if V_net_comp:
+                    e.append(comp(V_net,V_net_comp,x_ls, n_comp))
+        if V_net_comp:
+            return V_net, torch.tensor(e)
+        else:
+            return V_net
+```
+
+
+```python
+def algorithm_CBO_BFF(V_net, V_s, S, M, m, epochs, γ,λ,τ,η,β_k, V_net_comp=None, n_comp=100):
+    '''
+    Implementation of CBO algorithm to minimize J̃ = E[(1/2)E[f(s_{m},s_{m+1};θ)|s_{m}]E[f(s_{m},s̃_{m+1};θ)|s_{m}]]
+    
+    Parameters:
+        V_net      : Net class 
+        V_s        : List of Nets (corresponding to particles in CBO)
+        S          : Sample trajectory
+        M          : Size of batches in X
+        m          : Size of batches in S (set to S.size()[0] for no approximations)
+        epochs     : Number of epochs
+        γ          : Discount factor
+        λ          : Exploitation rate
+        τ          : Exploration rate
+        η          : Learning rate          
+        β_k          : 1/(Characteristic energy), as a function of epochs
+        V_net_comp : Net to compare V_net to
+        n_comp     : Number of points to use to compare V_net and V_net_comp
+        
+    Returns:
+        V_net      : Net class
+        e          : Errors, computed each batch
+    '''
+    with torch.no_grad():
+        Rem = torch.tensor([])
+        L = torch.empty(M)
+        N = len(V_s)
+        n = S.size()[0]
+        if V_net_comp:
+            x_ls = torch.linspace(0,2*np.pi,n+1)[:-1].view(-1,1)
+            e = [comp(V_net,V_net_comp,x_ls, n_comp)]
+        for k in trange(epochs, leave=False, desc="Epoch"):
+            B, Rem = gen_batches(N,M, Rem)
+            β = β_k(k)
             for i, B_θ in enumerate(tqdm(B,leave=False,desc="Batch")):
                 A_θ = torch.randperm(n-2)[:m]
                 s = S[A_θ]
@@ -552,7 +619,7 @@ def algorithm_CBO_BFF(V_net, V_s, S, M, m, epochs, γ,λ,σ,η,β, V_net_comp=No
                     # Particle-wise noise              
                     #  X_new += -λ*η*(X_new-x_new)+σ*np.sqrt(η)*torch.diag(torch.normal(torch.zeros(M))).mm(X_new-x_new)
                     # Parameter-particle-wise noise
-                    X_new += -λ*η*(X_new-x_new)+σ*np.sqrt(η)*torch.normal(torch.zeros(X_new.size()))*(X_new-x_new)
+                    X_new += -λ*η*(X_new-x_new)+τ*np.sqrt(η)*torch.normal(torch.zeros(X_new.size()))*(X_new-x_new)
                     xX_new = torch.cat((x_new,X_new)).view(-1, *xX[0].size())
                     for xX_j, xX_new_j in zip(xX,xX_new):
                         xX_j +=  xX_new_j - xX_j
@@ -570,9 +637,14 @@ N = int(1e4)
 M = int(1e4)
 m = int(S.size()[0]/M)
 epochs = 40
+λ = 5.
+τ = 3.
+η = 0.1
+β_k = lambda k: 200
+
 V_CBO = Net()
 V_s = [Net() for _ in range(N)]
-V_CBO, e_CBO = algorithm_CBO(V_CBO, V_s, S, M, m, epochs, 0.9,5.,3.,0.1, 200., V_net_comp=V_star, n_comp=100)
+V_CBO, e_CBO = algorithm_CBO(V_CBO, V_s, S, M, m, epochs, γ,λ,τ,η,β_k, V_net_comp=V_star, n_comp=100)
 ```
 
 
@@ -738,20 +810,720 @@ V_CBO, e_CBO = algorithm_CBO(V_CBO, V_s, S, M, m, epochs, 0.9,5.,3.,0.1, 200., V
 
     HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
 
+
+    
 
 
 ```python
-N = int(1e3)
-M = int(1e3)
-m = int(S.size()[0]/M)
-epochs = 40
-V_CBO_BFF = Net()
-V_s = [Net() for _ in range(N)]
-V_CBO_BFF, e_CBO_BFF = algorithm_CBO_BFF(V_CBO_BFF, V_s, S, M, m, epochs, 0.9,5.,3.,0.1, 300., V_net_comp=V_star, n_comp=100)
+fig, axs = plt.subplots(figsize=(12,5),ncols=2)
+x_ls = torch.linspace(0,2*np.pi,300)
+y_star_ls = V_star(x_ls.view(-1,1)).view(-1)
+y_ls = torch.cat([V(x_ls.view(-1,1)).view(1,-1) for V in [V_CBO]])
+y_ls -= torch.mean(y_ls-y_star_ls.view(1,-1),axis=1).view(-1,1)
+e_ls = [e_CBO]
+labels = ["CBO"]
+line_styles = ['solid']
+axs[0].plot(x_ls.detach().numpy(),y_star_ls.detach().numpy(),label="Algo 1 *",color="black")
+for j in range(0,len(y_ls)):
+    axs[0].plot(x_ls.detach().numpy(),y_ls[j].detach().numpy(),label=labels[j],color=colors[j], ls=line_styles[j])
+    axs[1].plot(e_ls[j]/e_ls[j][0], label=labels[j],color=colors[j])
+axs[0].set_ylabel(r"$V(s)$")
+axs[0].set_xlabel(r"$s$")
+axs[1].set_yscale("log")
+axs[1].set_ylabel(r"$e_k/e_0$ (log scale)")
+axs[1].set_xlabel(r"$k$")
+handles, labels = axs[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc='center right')
+plt.tight_layout()
+plt.subplots_adjust(right=0.9)
 ```
 
 
-    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=40.0, style=ProgressStyle(description_width='…
+![png](CBO_RL_files/CBO_RL_32_0.png)
+
+
+#### Searching Hyperparameter space for reasonable parameters (N $\sim 100$)
+
+
+```python
+N = int(1e2)
+M = int(1e2)
+m = int(S.size()[0]/M)
+epochs = 200
+V_ls = []
+e_ls = []
+labels = []
+λ = 1.
+for η in tqdm([0.01],leave=False, desc="η"):
+    for τ in tqdm(torch.linspace(4., 4.,1),leave=False, desc="τ"):
+        for β in tqdm([275.], leave=False, desc="β"):
+            for r in tqdm([1.005], leave=False, desc="r"):
+                V_s = [Net() for _ in range(N)]
+                V_CBO, e_CBO = algorithm_CBO(Net(), V_s, S, M, m, epochs, 0.9,λ,τ,η, lambda k: β*min(r**k,1.5)
+    , V_net_comp=V_star, n_comp=100)
+                V_ls.append(V_CBO)
+                e_ls.append(e_CBO)
+                labels.append(f"η {η:0.2f}, τ:{τ:0.0f}, β: {β:0.0f}, r:{r:0.3f}")
+```
+
+
+    HBox(children=(FloatProgress(value=0.0, description='η', max=1.0, style=ProgressStyle(description_width='initi…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='τ', max=1.0, style=ProgressStyle(description_width='initi…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='β', max=1.0, style=ProgressStyle(description_width='initi…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='r', max=1.0, style=ProgressStyle(description_width='initi…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=200.0, style=ProgressStyle(description_width=…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
+
+
+
+    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
 
 
 
@@ -917,17 +1689,14 @@ V_CBO_BFF, e_CBO_BFF = algorithm_CBO_BFF(V_CBO_BFF, V_s, S, M, m, epochs, 0.9,5.
 
 ```python
 fig, axs = plt.subplots(figsize=(12,5),ncols=2)
-x_ls = torch.linspace(0,2*np.pi,300)
+x_ls = torch.linspace(0,2*np.pi,100)
 y_star_ls = V_star(x_ls.view(-1,1)).view(-1)
-y_ls = torch.cat([V(x_ls.view(-1,1)).view(1,-1) for V in [V_CBO, V_CBO_BFF]])
+y_ls = torch.cat([V(x_ls.view(-1,1)).view(1,-1) for V in V_ls])
 y_ls -= torch.mean(y_ls-y_star_ls.view(1,-1),axis=1).view(-1,1)
-e_ls = [e_CBO, e_CBO_BFF]
-labels = ["CBO", "CBO BFF"]
-line_styles = ['solid','solid']
 axs[0].plot(x_ls.detach().numpy(),y_star_ls.detach().numpy(),label="Algo 1 *",color="black")
 for j in range(0,len(y_ls)):
-    axs[0].plot(x_ls.detach().numpy(),y_ls[j].detach().numpy(),label=labels[j],color=colors[j], ls=line_styles[j])
-    axs[1].plot(e_ls[j]/e_ls[j][0], label=labels[j],color=colors[j])
+    axs[0].plot(x_ls.detach().numpy(),y_ls[j].detach().numpy(),label=labels[j])
+    axs[1].plot(e_ls[j]/e_ls[j][0], label=labels[j])
 axs[0].set_ylabel(r"$V(s)$")
 axs[0].set_xlabel(r"$s$")
 axs[1].set_yscale("log")
@@ -936,95 +1705,11 @@ axs[1].set_xlabel(r"$k$")
 handles, labels = axs[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='center right')
 plt.tight_layout()
-plt.subplots_adjust(right=0.9)
+plt.subplots_adjust(right=0.8)
 ```
 
 
-![png](CBO_RL_files/CBO_RL_32_0.png)
+![png](CBO_RL_files/CBO_RL_35_0.png)
 
-
-#### Searching Hyperparameter space
-
-
-```python
-# V_s = [Net() for _ in range(int(1e2))]
-# L_m = 1.
-# n = S.size()[0]
-# m = int(1e3)
-# A_θ = torch.randperm(n-1)[:m]
-# s = S[A_θ]
-# s_1 = S[A_θ+1]
-# f = torch.cat([R[A_θ] + γ*V_j(s_1)-V_j(s) for V_j in V_s],1)
-# L = torch.mean(f**2 / 2.,0)
-# V_0 = 0
-# for X in zip(*[V_j.parameters() for V_j in V_s]):
-#     X_tensor = torch.cat([X_j.view(1,-1) for X_j in X])
-#     V_0 += ((X_tensor - X_tensor.mean(axis=0).view(1,-1))**2).mean(axis=0).norm()**2.
-```
-
-
-```python
-# λ_ls = np.linspace(0, 9, 50)
-# σ_0_ls = np.linspace(0, 4, 40)
-# def μ_f(β,λ,σ_0):
-#     M_0 = torch.exp(-β*L).mean()
-#     return 2*λ - σ_0**2 - 2*σ_0**2*np.exp(-β*L_m)/M_0.detach().numpy()
-# λ,σ_0 = np.meshgrid(λ_ls, σ_0_ls)
-# β = 200.
-# μ = μ_f(β,λ, σ_0)
-# plt.contourf(λ, σ_0,μ, cmap='RdBu', norm=colors.DivergingNorm(vcenter=0))
-# plt.title(r"$\mu$, for $\beta$="+f"{β}")
-# plt.xlabel(r"$λ$")
-# plt.ylabel(r"$\sigma_0$")
-# plt.colorbar()
-```
-
-
-```python
-# M = int(1e4)
-# m = int(S.size()[0]/M)
-# epochs = 25
-# V_ls = []
-# e_ls = []
-# labels = []
-# for λ in tqdm(torch.linspace(5.,6., 1),leave=False, desc="λ"):
-#     for σ_0 in tqdm(torch.linspace(3.,4., 2),leave=False, desc="σ_0"):
-#         for β in tqdm(torch.linspace(150.,250., 4), leave=False, desc="β"):
-#             V_s = [Net() for _ in range(int(1e4))]
-#             V_CBO, e_CBO = algorithm_CBO(Net(), V_s, S, M, m, epochs, 0.9,λ,σ_0,0.1,β, V_net_comp=V_star, n_comp=100)
-#             V_ls.append(V_CBO)
-#             e_ls.append(e_CBO)
-#             labels.append(f"λ: {λ:0.2f}, σ: {σ_0:0.2f}, β: {β:0.2f},")
-```
-
-
-```python
-# fig, axs = plt.subplots(figsize=(12,5),ncols=2)
-# x_ls = torch.linspace(0,2*np.pi,100)
-# y_star_ls = V_star(x_ls.view(-1,1)).view(-1)
-# y_ls = torch.cat([V(x_ls.view(-1,1)).view(1,-1) for V in V_ls])
-# y_ls -= torch.mean(y_ls-y_star_ls.view(1,-1),axis=1).view(-1,1)
-# # colors = ["tab:blue", "tab:orange","tab:green","tab:red","tab:purple"]
-# # labels = ["Algo 1", "Algo 2", "Algo 3", "Algo 4", "CBO"]
-# # line_styles = ['solid','solid',(5,(5,5)),(0,(5,5)),'solid']
-# axs[0].plot(x_ls.detach().numpy(),y_star_ls.detach().numpy(),label="Algo 1 *",color="black")
-# for j in range(0,len(y_ls)):
-#     axs[0].plot(x_ls.detach().numpy(),y_ls[j].detach().numpy(),label=labels[j])
-#     axs[1].plot(e_ls[j]/e_ls[j][0], label=labels[j])
-# axs[0].set_ylabel(r"$V(s)$")
-# axs[0].set_xlabel(r"$s$")
-# axs[1].set_yscale("log")
-# axs[1].set_ylabel(r"$e_k/e_0$ (log scale)")
-# axs[1].set_xlabel(r"$k$")
-# handles, labels = axs[0].get_legend_handles_labels()
-# fig.legend(handles, labels, loc='center right')
-# plt.tight_layout()
-# plt.subplots_adjust(right=0.9)
-```
 
 ## Discrete state space (5.2.)
-
-
-```python
-
-```
