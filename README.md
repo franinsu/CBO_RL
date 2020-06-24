@@ -22,10 +22,10 @@ mpl.rcParams['figure.dpi'] = 120
 # hacky way of toggling between showing/hiding progress bar
 
 # show
-from tqdm.auto import tqdm, trange
+# from tqdm.auto import tqdm, trange
 # hide
-# trange = lambda x, leave=None, desc=None: range(x)
-# tqdm = lambda x, leave=None, desc=None: x
+trange = lambda x, leave=None, desc=None: range(x)
+tqdm = lambda x, leave=None, desc=None: x
 ```
 
 ## Continuous state space (5.1.)
@@ -364,46 +364,6 @@ V_4,e_4 = algorithm_4(V_4,M,epochs,γ,τ,S,R,V_star,n)
 ```
 
 
-    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=999.0, style=ProgressStyle(description_width=…
-
-
-    
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=999.0, style=ProgressStyle(description_width=…
-
-
-    
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=999.0, style=ProgressStyle(description_width=…
-
-
-    
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=999.0, style=ProgressStyle(description_width=…
-
-
-    
-
-
 ```python
 fig, axs = plt.subplots(figsize=(12,5),ncols=2)
 x_ls = torch.linspace(0,2*np.pi,100)
@@ -545,7 +505,7 @@ def algorithm_CBO_UR(V_net, V_s, S, α,σ, M, m, epochs, γ,λ,τ,η,β_k, V_net
                 V_θ = [V_j for j,V_j in enumerate(V_s) if j in B_θ]
                 f = torch.cat([R[A_θ] + γ*V_j(s_1)-V_j(s) for V_j in V_θ],1)
                 f̂ = torch.cat([R[A_θ] + γ*V_j(ŝ_1)-V_j(s) for V_j in V_θ],1)
-                L = torch.sum(f*f̃,0)/(2*m)
+                L = torch.sum(f*f̂,0)/(2*m)
                 mu = torch.exp(-β*L)
                 for xX in zip(V_net.parameters(),*[V_j.parameters() for V_j in V_θ]):
                     xX_tensor = torch.cat([xX_j.view(1,-1) for xX_j in xX])
@@ -633,214 +593,44 @@ def algorithm_CBO_BFF(V_net, V_s, S, M, m, epochs, γ,λ,τ,η,β_k, V_net_comp=
 
 
 ```python
-N = int(1e4)
-M = int(1e4)
-m = int(S.size()[0]/M)
-epochs = 40
-λ = 5.
-τ = 3.
-η = 0.1
-β_k = lambda k: 200
+# N = int(1e4)
+# M = int(1e4)
+# m = int(S.size()[0]/M)
+# epochs = 40
+# λ = 5.
+# τ = 3.
+# η = 0.1
+# β_k = lambda k: 200
 
-V_CBO = Net()
-V_s = [Net() for _ in range(N)]
-V_CBO, e_CBO = algorithm_CBO(V_CBO, V_s, S, M, m, epochs, γ,λ,τ,η,β_k, V_net_comp=V_star, n_comp=100)
+# V_CBO = Net()
+# V_s = [Net() for _ in range(N)]
+# V_CBO, e_CBO = algorithm_CBO(V_CBO, V_s, S, M, m, epochs, γ,λ,τ,η,β_k, V_net_comp=V_star, n_comp=100)
 ```
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=40.0, style=ProgressStyle(description_width='…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-    
 
 
 ```python
-fig, axs = plt.subplots(figsize=(12,5),ncols=2)
-x_ls = torch.linspace(0,2*np.pi,300)
-y_star_ls = V_star(x_ls.view(-1,1)).view(-1)
-y_ls = torch.cat([V(x_ls.view(-1,1)).view(1,-1) for V in [V_CBO]])
-y_ls -= torch.mean(y_ls-y_star_ls.view(1,-1),axis=1).view(-1,1)
-e_ls = [e_CBO]
-labels = ["CBO"]
-line_styles = ['solid']
-axs[0].plot(x_ls.detach().numpy(),y_star_ls.detach().numpy(),label="Algo 1 *",color="black")
-for j in range(0,len(y_ls)):
-    axs[0].plot(x_ls.detach().numpy(),y_ls[j].detach().numpy(),label=labels[j],color=colors[j], ls=line_styles[j])
-    axs[1].plot(e_ls[j]/e_ls[j][0], label=labels[j],color=colors[j])
-axs[0].set_ylabel(r"$V(s)$")
-axs[0].set_xlabel(r"$s$")
-axs[1].set_yscale("log")
-axs[1].set_ylabel(r"$e_k/e_0$ (log scale)")
-axs[1].set_xlabel(r"$k$")
-handles, labels = axs[0].get_legend_handles_labels()
-fig.legend(handles, labels, loc='center right')
-plt.tight_layout()
-plt.subplots_adjust(right=0.9)
+# fig, axs = plt.subplots(figsize=(12,5),ncols=2)
+# x_ls = torch.linspace(0,2*np.pi,300)
+# y_star_ls = V_star(x_ls.view(-1,1)).view(-1)
+# y_ls = torch.cat([V(x_ls.view(-1,1)).view(1,-1) for V in [V_CBO]])
+# y_ls -= torch.mean(y_ls-y_star_ls.view(1,-1),axis=1).view(-1,1)
+# e_ls = [e_CBO]
+# labels = ["CBO"]
+# line_styles = ['solid']
+# axs[0].plot(x_ls.detach().numpy(),y_star_ls.detach().numpy(),label="Algo 1 *",color="black")
+# for j in range(0,len(y_ls)):
+#     axs[0].plot(x_ls.detach().numpy(),y_ls[j].detach().numpy(),label=labels[j],color=colors[j], ls=line_styles[j])
+#     axs[1].plot(e_ls[j]/e_ls[j][0], label=labels[j],color=colors[j])
+# axs[0].set_ylabel(r"$V(s)$")
+# axs[0].set_xlabel(r"$s$")
+# axs[1].set_yscale("log")
+# axs[1].set_ylabel(r"$e_k/e_0$ (log scale)")
+# axs[1].set_xlabel(r"$k$")
+# handles, labels = axs[0].get_legend_handles_labels()
+# fig.legend(handles, labels, loc='center right')
+# plt.tight_layout()
+# plt.subplots_adjust(right=0.9)
 ```
-
-
-![png](CBO_RL_files/CBO_RL_32_0.png)
-
 
 #### Searching Hyperparameter space for reasonable parameters (N $\sim 100$)
 
@@ -849,845 +639,34 @@ plt.subplots_adjust(right=0.9)
 N = int(1e2)
 M = int(1e2)
 m = int(S.size()[0]/M)
-epochs = 200
-V_ls = []
-e_ls = []
-labels = []
+epochs = 500
 λ = 1.
-for η in tqdm([0.01],leave=False, desc="η"):
-    for τ in tqdm(torch.linspace(4., 4.,1),leave=False, desc="τ"):
-        for β in tqdm([275.], leave=False, desc="β"):
-            for r in tqdm([1.005], leave=False, desc="r"):
-                V_s = [Net() for _ in range(N)]
-                V_CBO, e_CBO = algorithm_CBO(Net(), V_s, S, M, m, epochs, 0.9,λ,τ,η, lambda k: β*min(r**k,1.5)
-    , V_net_comp=V_star, n_comp=100)
-                V_ls.append(V_CBO)
-                e_ls.append(e_CBO)
-                labels.append(f"η {η:0.2f}, τ:{τ:0.0f}, β: {β:0.0f}, r:{r:0.3f}")
+η = 0.005
+τ = 4.
+β = 100
+r = 1.005
+r_max = 4.0
+V_s = [Net() for _ in range(N)]
+V_CBO, e_CBO = algorithm_CBO(Net(), V_s, S, M, m, epochs, 0.9,λ,τ,η, lambda k: β*min(r**k,r_max), V_net_comp=V_star, n_comp=100)
 ```
 
 
-    HBox(children=(FloatProgress(value=0.0, description='η', max=1.0, style=ProgressStyle(description_width='initi…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='τ', max=1.0, style=ProgressStyle(description_width='initi…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='β', max=1.0, style=ProgressStyle(description_width='initi…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='r', max=1.0, style=ProgressStyle(description_width='initi…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Epoch', max=200.0, style=ProgressStyle(description_width=…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
-
-
-    HBox(children=(FloatProgress(value=0.0, description='Batch', max=1.0, style=ProgressStyle(description_width='i…
-
+```python
+V_s = [Net() for _ in range(N)]
+V_CBO_UR, e_CBO_UR = algorithm_CBO_UR(Net(), V_s, S, α,σ, M, m, epochs, 0.9,λ,τ,η, lambda k: β*min(r**k,r_max), V_net_comp=V_star, n_comp=100)
+```
 
 
 ```python
+V_s = [Net() for _ in range(N)]
+V_CBO_BFF, e_CBO_BFF = algorithm_CBO_BFF(Net(), V_s, S, M, m, epochs, 0.9,λ,τ,η, lambda k: β*min(r**k,r_max), V_net_comp=V_star, n_comp=100)
+```
+
+
+```python
+V_ls = [V_CBO,V_CBO_UR,V_CBO_BFF]
+e_ls = [e_CBO,e_CBO_UR, e_CBO_BFF]
+labels = ["CBO","CBO_UR","CBO_BFF"]
 fig, axs = plt.subplots(figsize=(12,5),ncols=2)
 x_ls = torch.linspace(0,2*np.pi,100)
 y_star_ls = V_star(x_ls.view(-1,1)).view(-1)
@@ -1709,7 +688,51 @@ plt.subplots_adjust(right=0.8)
 ```
 
 
-![png](CBO_RL_files/CBO_RL_35_0.png)
+![png](CBO_RL_files/CBO_RL_37_0.png)
 
+
+
+```python
+# N = int(1e2)
+# M = int(1e2)
+# m = int(S.size()[0]/M)
+# epochs = 300
+# V_ls = []
+# e_ls = []
+# labels = []
+# λ = 1.
+# for η in tqdm([0.001],leave=False, desc="η"):
+#     for τ in tqdm([4.],leave=False, desc="τ"):
+#         for β in tqdm([250.], leave=False, desc="β"):
+#             for r in tqdm([1.001], leave=False, desc="r"):
+#                 V_s = [Net() for _ in range(N)]
+#                 V_CBO, e_CBO = algorithm_CBO(Net(), V_s, S, M, m, epochs, 0.9,λ,τ,η, lambda k: β*min(r**k,1.5)
+#     , V_net_comp=V_star, n_comp=100)
+#                 V_ls.append(V_CBO)
+#                 e_ls.append(e_CBO)
+#                 labels.append(f"η {η:0.2f}, τ:{τ:0.0f}, β: {β:0.0f}, r:{r:0.3f}")
+```
+
+
+```python
+# fig, axs = plt.subplots(figsize=(12,5),ncols=2)
+# x_ls = torch.linspace(0,2*np.pi,100)
+# y_star_ls = V_star(x_ls.view(-1,1)).view(-1)
+# y_ls = torch.cat([V(x_ls.view(-1,1)).view(1,-1) for V in V_ls])
+# y_ls -= torch.mean(y_ls-y_star_ls.view(1,-1),axis=1).view(-1,1)
+# axs[0].plot(x_ls.detach().numpy(),y_star_ls.detach().numpy(),label="Algo 1 *",color="black")
+# for j in range(0,len(y_ls)):
+#     axs[0].plot(x_ls.detach().numpy(),y_ls[j].detach().numpy(),label=labels[j])
+#     axs[1].plot(e_ls[j]/e_ls[j][0], label=labels[j])
+# axs[0].set_ylabel(r"$V(s)$")
+# axs[0].set_xlabel(r"$s$")
+# axs[1].set_yscale("log")
+# axs[1].set_ylabel(r"$e_k/e_0$ (log scale)")
+# axs[1].set_xlabel(r"$k$")
+# handles, labels = axs[0].get_legend_handles_labels()
+# fig.legend(handles, labels, loc='center right')
+# plt.tight_layout()
+# plt.subplots_adjust(right=0.8)
+```
 
 ## Discrete state space (5.2.)
