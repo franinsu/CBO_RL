@@ -775,7 +775,7 @@ plotQ(Q_s,e_s,lb_s,Q_ctrl_UR_SGD_star,"UR *")
 # %%
 def Q_CBO_gen(L_f):
     def algo(Q_net=Net(), N=30, m=1000, epochs=100, S=S,A_idx=A_idx, R=R, a_s=a_s, π=π,σ=σ,ϵ=ϵ,γ=0.9,λ=1.,δ = 1e-3,
-             τ_k=lambda k:0.1, η_k=lambda k:0.5, β_k=lambda k:10, Q_net_comp=None, n_comp=1000):
+             τ_k=lambda k:0.1, η_k=lambda k:0.5, β_k=lambda k:10, Q_net_comp=None, n_comp=1000, early_stop=None):
         with torch.no_grad():
             Q_θ = [Net() for _ in range(N)]
             rem = torch.tensor([])
@@ -789,6 +789,8 @@ def Q_CBO_gen(L_f):
             for k in trange(epochs, leave=False, position=0, desc="Epoch"):
                 A, rem = gen_batches(n-2,m, rem)
                 for A_θ in tqdm(A,leave=False, position=0, desc="Batch"):
+                    if early_stop and i>early_stop:
+                        continue
                     β = β_k(i)
                     τ = τ_k(i)  
                     η = η_k(i)
@@ -858,12 +860,9 @@ N = 30
 m = 1000
 epochs = 1
 δ = 1e-5
-# η_k = lambda k: 0.5
-η_k = lambda k: max(0.6*0.998**k,0.4)
-# τ_k = lambda k: 0.1
-τ_k = lambda k: max(0.4*0.998**k,0.01)
-β_k = lambda k: min(5*1.002**k,20.)
-# β_k = lambda k: min(30*1.002**k,80)
+η_k = lambda k: 0.5
+τ_k = lambda k: 0.4
+β_k = lambda k: 5.
 
 
 # %%
@@ -940,4 +939,49 @@ Q_dict = {
 }
 plotQ2(Q_dict, Q_ctrl_UR_SGD_star, "UR * SGD")
 plt.savefig("figs/Q_ctrl_SGD_CBO")
+# %%
+
+from hyperopt import hp, tpe, Trials, fmin
+# %%
+space = {
+    "r_η_0": hp.lognormal("r_η_0",1.,1.),
+    "r_τ_0": hp.lognormal("r_τ_0",1.,1.),
+    "r_β_0": hp.lognormal("r_β_0",1.,1.),
+}
+def fn(params):
+    r_η_0, r_τ_0, r_β_0 = [params[p] for p in ["r_η_0","r_τ_0","r_β_0"]]
+    _, e_BFF = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
+        N=30, m=1000, epochs=1, 
+        τ_k=lambda k:0.5*(2-r_τ_0)**k,
+        η_k=lambda k:0.4*(2-r_τ_0)**k,
+        β_k=lambda k:5*(r_β_0)**k,
+        δ = 1e-5,
+        Q_net_comp = Q_ctrl_UR_SGD_star, early_stop=50)
+    r = np.log(e_BFF[-1]/e_BFF[0])
+    return r.item()
+
+tpe_trials = Trials()
+best = fmin(
+    fn=fn,
+    space=space,
+    algo=tpe.suggest,
+    trials=tpe_trials,
+    max_evals=25
+)
+
+# %%
+import pandas as pd
+tpd_results = pd.DataFrame(
+    {
+        **{"loss":[x["loss"] for x in tpe_trials.results]},
+        **{p:tpe_trials.idxs_vals[1][p] for p in ["r_η_0","r_τ_0","r_β_0"]}
+    })
+plt.figure()
+plt.plot(tpd_results["loss"])
+plt.title("loss")
+for p in  ["r_η_0","r_τ_0","r_β_0"]:
+    plt.figure()
+    plt.plot(tpd_results[p])
+    plt.title(p)
+tpd_results
 # %%

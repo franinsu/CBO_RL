@@ -30,52 +30,39 @@ $$
 
 - The SGD algorithm runs for a single epoch with the same initialization $\theta_0$. 
 - Error at step $k$, $e_k$ is defined as $e_k=\| V(\cdot,\theta_k)-V^*\|_{L^2}$. 
-- Reference $V^*(s)$ is computed by running Algorithm 1 for 10 epochs based on longer trajectory $\{s_m\}_{m=1}^{10^7}$, with $\tau=0.01$, $M=1000$.
+- Reference $V^*(s)$ is computed by running Algorithm 1 for 10 epochs based on longer trajectory $\{s_m\}_{m=1}^{10^7}$, with $\tau=0.01,$ $M=1000$.
 - We visualize relative error, $\log_{10}(e_k/e_0)$.
 
-- **NB**, I made one modification to paper:
+- **NB**, I made one modification from the paper:
   - Since $V(s,\theta)\mapsto V(s,\theta)+\delta$ is a symmetry in $f$, then a better way of measuring error, $e_k$, is 
 
 $$
 e_k=\| V(\cdot,\theta_k)-V^* - \mu_k \|_2,\quad \mu_k = \int V(\cdot,\theta_k)-V^*
 $$
 
-### SGD
+### SGD vs CBO
 
-- Algo 1*: Unrealistic, with 10 x longer sample trajectory
-
-- Algo 1: Unrealistic
-
-- Algo 2: Double Sampling
-
-- Algo 3: BFF - gradient
-
-- Algo 4: BFF - loss
-
-  ```python
-  M = 1000
-  epochs = 1
-  γ = 0.9
-  τ = 0.1
-  n = 100
-  ```
-  
-  ![](/home/franinsu/Documents/Lexing/CBO_RL/CBO_RL_files/CBO_RL_26_0.png)
-
-### CBO
-
+SGD Parameters:
 ```python
-N = int(1e2)
-M = int(1e2)
-m = int(1e4)
-epochs = 2000
-λ = 1.
-η_k = lambda k: max(0.005*0.99985**k,0.001) # Learning rate
-τ_k = lambda k: max(5*0.995**k, 0.01) # Exploration rate
-β_k = lambda k: min(50*1.0025**k,400.) # 1/Characteristic energy
+M = 1000
+epochs = 1
+γ = 0.9
+τ = 0.1
+n = 100
 ```
 
-![CBO_RL_37_0](/home/franinsu/Documents/Lexing/CBO_RL/CBO_RL_files/CBO_RL_37_0.png)
+CBO Paramaters:
+```python
+N = 30
+m = 1000
+epochs = 1
+δ = 1e-5 # Threshold of difference below which particles take a brownian motion step
+η_k = lambda k: max(0.5*0.998**k,0.01) # Learning rate
+τ_k = lambda k: max(0.1*0.998**k,0.01) # Exploration rate
+β_k = lambda k: min(30*1.002**k,80) # 1/Characteristic energy
+```
+
+![](/home/franinsu/Documents/Lexing/CBO_RL/figs/V_SGD_vs_CBO_yuhua.png)
 
 ## $Q$-evaluation and control, continuous state space (4.1.)
 
@@ -96,6 +83,7 @@ $$
 $$
 
 - 3 layer FCNN, $Q^\pi(s,a;\theta)$. Two hidden layers with $\cos$ activation function, and each hidden layer contains 50 neurons. Output layer of size $|\mathbb A|$.
+- Reference $Q^*$ is computed by running UR for 10 epochs based on longer trajectory $\{s_m\}_{m=1}^{10^7}$, with $\tau=0.01,$ $M=1000.$
 
 ### $Q$-evaluation
 
@@ -103,32 +91,34 @@ Estimating $Q^\pi$ for fixed policy $\pi(a|s)=1/2 + a \sin(s)/5$.
 $$
 j^{eval}(s_m, a_m, s_{m+1};\theta) = r(s_{m+1}, s_m, a_m)  + \gamma \int Q^\pi(s_{m+1},a;\theta)\pi(a|s_{m+1})da - Q^\pi(s_m,a_m;\theta)
 $$
-#### SGD
-
-```python
-M = int(1e4)
-epochs = 25
-τ_k = lambda k: 0.08*0.9**k
-```
-
-![](/home/franinsu/Documents/Lexing/CBO_RL/CBO_RL-2_files/CBO_RL-2_25_0.png)
 
 ### $Q$-control
 
 Fixed behavior policy to generate training trajectory, $\pi(a|s)=1/|\mathbb A|$.
 
-$$j^{ctrl}(s_m, a_m, s_m+1;\theta) = r(s_{m+1}, s_m, a_m)  + \gamma \max_{a'} Q^\pi(s_{m+1},a';\theta) - Q^\pi(s_m,a_m;\theta)$$
+$$
+j^{ctrl}(s_m, a_m, s_m+1;\theta) = r(s_{m+1}, s_m, a_m)  + \gamma \max_{a'} Q^\pi(s_{m+1},a';\theta) - Q^\pi(s_m,a_m;\theta)
+$$
 
-#### SGD
+#### SGD vs CBO
 
-```python
-M = int(1e4)
-epochs = 15
-τ_k = lambda k: 0.15*0.95**k
+SGD Parameters:
+
+```{python}
+τ = 0.1
+M = 1000
+epochs = 20
+```
+CBO Parameters:
+
+```{python}
+N = 30
+m = 1000
+epochs = 1
+δ = 1e-5
+η_k = lambda k: max(0.6*0.998**k,0.4)
+τ_k = lambda k: max(0.3*0.998**k,0.01)
+β_k = lambda k: min(5*1.002**k,20.)
 ```
 
-![](/home/franinsu/Documents/Lexing/CBO_RL/CBO_RL-2_files/CBO_RL-2_42_0.png)
-
-#### CBO
-
-![](/home/franinsu/Documents/Lexing/CBO_RL/CBO_RL-2_files/CBO_RL-2_51_0.png)
+![](/home/franinsu/Documents/Lexing/CBO_RL/figs/Q_ctrl_SGD_CBO.png)
