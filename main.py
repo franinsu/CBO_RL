@@ -150,7 +150,7 @@ m = 1000
 epochs = 1
 δ = 1e-5
 early_stop = 1000
-
+#%%
 def test():
     Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
         S, A_idx, R, a_s, π, σ, ϵ,
@@ -163,13 +163,28 @@ def test():
     plt.show()
 
 #%%
-for x in [0.999,0.9992,0.9995,0.9998]:
-    def η_k(k): return max(0.1*0.9998**k, 0.01)
-    def τ_k(k): return max(0.75*x**k, 0.3)
+for x in []:
+    def η_k(k): return max(0.1*0.9992**k, 0.08)
+    def τ_k(k): return max(0.75*0.9992**k, 0.3)
     def β_k(k): return min(8*1.002**k,20)
     test()
     print(f"x={x}")
 
-
+# %%
+def η_k(k): return max(0.1*0.9992**k, 0.08)
+def τ_k(k): return max(0.75*0.9992**k, 0.3)
+def β_k(k): return min(8*1.002**k,20)
+Q_s = []
+e_s = []
+lb_s = []
+for _ in range(5):
+    Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
+        S, A_idx, R, a_s, π, σ, ϵ,
+        N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k, β_k=β_k, δ=1e-5, Q_net_comp=Q_ctrl_UR_SGD_star,early_stop=early_stop
+    )
+    Q_s.append(Q_ctrl_BFF_CBO)
+    e_s.append(e_ctrl_BFF_CBO)
+    lb_s.append("BFF")
+plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
 
 # %%
