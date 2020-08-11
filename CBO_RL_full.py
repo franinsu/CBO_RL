@@ -856,35 +856,51 @@ def Q_ctrl_BFF_CBO_L(Q_θ,A_θ, m, γ, S,A_idx, R, a_s, π=None,σ=None,ϵ=None)
 
 
 # %%
-N = 30
+N = 60 # 30
 m = 1000
 epochs = 1
 δ = 1e-5
-η_k = lambda k: 0.5
-τ_k = lambda k: 0.4
-β_k = lambda k: 5.
 
+η_k = lambda k: max(0.1*0.999**k,0.1)
+τ_k = lambda k: max(0.8*0.998**k,0.1)
+β_k = lambda k: min(5*1.002**k,20.)
 
+# η_k = lambda k: 0.5
+# τ_k = lambda k: 0.1
+# β_k = lambda k: min(4*1.002**k,8.)
+early_stop = 500
+#%%
+k_s = np.arange(early_stop)
+plt.plot(k_s, [τ_k(k) for k in k_s])
 # %%
 η_k(1000), τ_k(1000), β_k(1000)
 
 
 # %%
-Q_ctrl_UR_CBO, e_ctrl_UR_CBO = Q_CBO_gen(Q_ctrl_UR_CBO_L)(N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k, β_k=β_k,δ = 1e-5, Q_net_comp = Q_ctrl_UR_SGD_star)
-Q_ctrl_DS_CBO, e_ctrl_DS_CBO = Q_CBO_gen(Q_ctrl_DS_CBO_L)(N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k, β_k=β_k,δ = 1e-5, Q_net_comp = Q_ctrl_UR_SGD_star)
-Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k,β_k=β_k, δ = 1e-5, Q_net_comp = Q_ctrl_UR_SGD_star)
-
-# %%
-Q_s = [Q_ctrl_UR_CBO,Q_ctrl_DS_CBO,Q_ctrl_BFF_CBO]
-e_s = [e_ctrl_UR_CBO,e_ctrl_DS_CBO,e_ctrl_BFF_CBO]
-lb_s = ["UR","DS","BFF"]
+Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
+        N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k,β_k=β_k, δ = 1e-5,
+        Q_net_comp = Q_ctrl_UR_SGD_star,
+        early_stop=early_stop)
+#%%
+Q_s = [Q_ctrl_BFF_CBO]
+e_s = [e_ctrl_BFF_CBO]
+lb_s = ["BFF"]
 plotQ(Q_s,e_s,lb_s,Q_ctrl_UR_SGD_star,"UR *")
+#%%
+# Q_ctrl_UR_CBO, e_ctrl_UR_CBO = Q_CBO_gen(Q_ctrl_UR_CBO_L)(N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k, β_k=β_k,δ = 1e-5, Q_net_comp = Q_ctrl_UR_SGD_star)
+# Q_ctrl_DS_CBO, e_ctrl_DS_CBO = Q_CBO_gen(Q_ctrl_DS_CBO_L)(N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k, β_k=β_k,δ = 1e-5, Q_net_comp = Q_ctrl_UR_SGD_star)
+# Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k,β_k=β_k, δ = 1e-5, Q_net_comp = Q_ctrl_UR_SGD_star)
+# %%
+# Q_s = [Q_ctrl_UR_CBO,Q_ctrl_DS_CBO,Q_ctrl_BFF_CBO]
+# e_s = [e_ctrl_UR_CBO,e_ctrl_DS_CBO,e_ctrl_BFF_CBO]
+# lb_s = ["UR","DS","BFF"]
+# plotQ(Q_s,e_s,lb_s,Q_ctrl_UR_SGD_star,"UR *")
 
 
 # %%
 def plotQ2(Q_dict, Q_star, lb_star):
     n_r = len(Q_dict)
-    fig, axg = plt.subplots(figsize=(12,8),ncols=3, nrows=n_r)
+    fig, axg = plt.subplots(figsize=(12,8*n_r/3),ncols=3, nrows=n_r)
     x_s = torch.linspace(0,2*np.pi,1000)
     y_star = Q_star(x_s.view(-1,1))
     a_n = len(a_s)
@@ -912,24 +928,16 @@ def plotQ2(Q_dict, Q_star, lb_star):
     fig.legend(handles, labels, loc='center right')
     plt.tight_layout()
     plt.subplots_adjust(left=0.15,right=0.90)
-
-# %%
+#%%
 Q_dict = {
-    "UR": [
-        [Q_ctrl_UR_SGD,Q_ctrl_UR_CBO],
-        [e_ctrl_UR_SGD,e_ctrl_UR_CBO],
+    "BFF": [
+        [Q_ctrl_BFF_SGD,Q_ctrl_BFF_CBO],
+        [e_ctrl_BFF_SGD,e_ctrl_BFF_CBO],
         ["SGD", "CBO"],
-        ["C0","C1"],
-        ["solid","solid"]
-    ], 
-    "DS": [
-        [Q_ctrl_DS_SGD,Q_ctrl_DS_CBO],
-        [e_ctrl_DS_SGD,e_ctrl_DS_CBO],
-        ["SGD", "CBO"],
-        ["C0","C1"],
+        ["C0", "C1"],
         ["solid","solid"]
     ],
-    "BFF": [
+    "BFF2": [
         [Q_ctrl_BFF_SGD,Q_ctrl_BFF_CBO],
         [e_ctrl_BFF_SGD,e_ctrl_BFF_CBO],
         ["SGD", "CBO"],
@@ -938,50 +946,75 @@ Q_dict = {
     ]
 }
 plotQ2(Q_dict, Q_ctrl_UR_SGD_star, "UR * SGD")
-plt.savefig("figs/Q_ctrl_SGD_CBO")
+# %%
+# Q_dict = {
+#     "UR": [
+#         [Q_ctrl_UR_SGD,Q_ctrl_UR_CBO],
+#         [e_ctrl_UR_SGD,e_ctrl_UR_CBO],
+#         ["SGD", "CBO"],
+#         ["C0","C1"],
+#         ["solid","solid"]
+#     ], 
+#     "DS": [
+#         [Q_ctrl_DS_SGD,Q_ctrl_DS_CBO],
+#         [e_ctrl_DS_SGD,e_ctrl_DS_CBO],
+#         ["SGD", "CBO"],
+#         ["C0","C1"],
+#         ["solid","solid"]
+#     ],
+#     "BFF": [
+#         [Q_ctrl_BFF_SGD,Q_ctrl_BFF_CBO],
+#         [e_ctrl_BFF_SGD,e_ctrl_BFF_CBO],
+#         ["SGD", "CBO"],
+#         ["C0", "C1"],
+#         ["solid","solid"]
+#     ]
+# }
+# plotQ2(Q_dict, Q_ctrl_UR_SGD_star, "UR * SGD")
+# plt.savefig("figs/Q_ctrl_SGD_CBO")
 # %%
 
-from hyperopt import hp, tpe, Trials, fmin
-# %%
-space = {
-    "r_η_0": hp.lognormal("r_η_0",1.,1.),
-    "r_τ_0": hp.lognormal("r_τ_0",1.,1.),
-    "r_β_0": hp.lognormal("r_β_0",1.,1.),
-}
-def fn(params):
-    r_η_0, r_τ_0, r_β_0 = [params[p] for p in ["r_η_0","r_τ_0","r_β_0"]]
-    _, e_BFF = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
-        N=30, m=1000, epochs=1, 
-        τ_k=lambda k:0.5*(2-r_τ_0)**k,
-        η_k=lambda k:0.4*(2-r_τ_0)**k,
-        β_k=lambda k:5*(r_β_0)**k,
-        δ = 1e-5,
-        Q_net_comp = Q_ctrl_UR_SGD_star, early_stop=50)
-    r = np.log(e_BFF[-1]/e_BFF[0])
-    return r.item()
+# from hyperopt import hp, tpe, Trials, fmin
+# # %%
+# space = {
+#     "r_η_0": hp.lognormal("r_η_0",1.,1.),
+#     "r_τ_0": hp.lognormal("r_τ_0",1.,1.),
+#     "r_β_0": hp.lognormal("r_β_0",1.,1.),
+# }
+# def fn(params):
+#     r_η_0, r_τ_0, r_β_0 = [params[p] for p in ["r_η_0","r_τ_0","r_β_0"]]
+#     _, e_BFF = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
+#         N=30, m=1000, epochs=1, 
+#         τ_k=lambda k:0.5*(2-r_τ_0)**k,
+#         η_k=lambda k:0.4*(2-r_τ_0)**k,
+#         β_k=lambda k:5*(r_β_0)**k,
+#         δ = 1e-5,
+#         Q_net_comp = Q_ctrl_UR_SGD_star, early_stop=50)
+#     r = np.log(e_BFF[-1]/e_BFF[0])
+#     return r.item()
 
-tpe_trials = Trials()
-best = fmin(
-    fn=fn,
-    space=space,
-    algo=tpe.suggest,
-    trials=tpe_trials,
-    max_evals=25
-)
+# tpe_trials = Trials()
+# best = fmin(
+#     fn=fn,
+#     space=space,
+#     algo=tpe.suggest,
+#     trials=tpe_trials,
+#     max_evals=25
+# )
 
-# %%
-import pandas as pd
-tpd_results = pd.DataFrame(
-    {
-        **{"loss":[x["loss"] for x in tpe_trials.results]},
-        **{p:tpe_trials.idxs_vals[1][p] for p in ["r_η_0","r_τ_0","r_β_0"]}
-    })
-plt.figure()
-plt.plot(tpd_results["loss"])
-plt.title("loss")
-for p in  ["r_η_0","r_τ_0","r_β_0"]:
-    plt.figure()
-    plt.plot(tpd_results[p])
-    plt.title(p)
-tpd_results
-# %%
+# # %%
+# import pandas as pd
+# tpd_results = pd.DataFrame(
+#     {
+#         **{"loss":[x["loss"] for x in tpe_trials.results]},
+#         **{p:tpe_trials.idxs_vals[1][p] for p in ["r_η_0","r_τ_0","r_β_0"]}
+#     })
+# plt.figure()
+# plt.plot(tpd_results["loss"])
+# plt.title("loss")
+# for p in  ["r_η_0","r_τ_0","r_β_0"]:
+#     plt.figure()
+#     plt.plot(tpd_results[p])
+#     plt.title(p)
+# tpd_results
+# # %%
