@@ -554,7 +554,7 @@ def plotQ2(Q_dict, Q_star, lb_star, a_s):
         for k in range(a_n):
             axr[k].plot(x_s.detach().numpy(), y_star[:, k].detach(
             ).numpy(), label=lb_star, color="black")
-            axr[k].set_ylabel(f"$Q(a_{i},s)$")
+            axr[k].set_ylabel(f"$Q(a_{k},s)$")
             axr[k].set_xlabel(r"$s$")
         for j in range(n):
             for k in range(a_n):

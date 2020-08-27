@@ -1,1 +1,1 @@
--- [ ] Find parameters that work
+-- Run `main.py`

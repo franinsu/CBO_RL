@@ -43,25 +43,22 @@ $$
 ### SGD vs CBO
 
 SGD Parameters:
-```python
-M = 1000
-epochs = 1
-γ = 0.9
-τ = 0.1
-n = 100
-```
+$$
+M = 1000, \quad \text{epochs} = 1, \quad γ = 0.9, \quad τ = 0.1
+$$
 
 CBO Paramaters:
-```python
-N = 30
-m = 1000
-epochs = 1
-δ = 1e-5 # Threshold of difference below which particles take a brownian motion step
-η_k = lambda k: max(0.5*0.998**k,0.01) # Learning rate
-τ_k = lambda k: max(0.1*0.998**k,0.01) # Exploration rate
-β_k = lambda k: min(30*1.002**k,80) # 1/Characteristic energy
-```
-
+$$
+\begin{align}
+&N = 30\\
+&m = 1000\\
+&\text{epochs} = 1 \\
+&δ = 1\times 10^{-5} && \text{Threshold of difference below which particles take a brownian motion step}\\
+&η_k = \max(0.5\cdot 0.998^k,0.01) && \text{Learning rate}\\
+&τ_k =  \max(0.1\cdot0.998^k,0.01) && \text{Exploration rate}\\
+&β_k =  \max(30\cdot1.002^k,80) && \text{1/Characteristic energy}
+\end{align}
+$$
 ![](/home/franinsu/Documents/Lexing/CBO_RL/figs/V_SGD_vs_CBO_yuhua.png)
 
 ## $Q$-evaluation and control, continuous state space (4.1.)
@@ -103,22 +100,46 @@ $$
 #### SGD vs CBO
 
 SGD Parameters:
-
-```{python}
-τ = 0.1
-M = 1000
-epochs = 20
-```
+$$
+M = 1000, \quad \text{epochs} = 1, \quad γ = 0.9, \quad τ = 0.1
+$$
 CBO Parameters:
 
-```{python}
-N = 30
-m = 1000
-epochs = 1
-δ = 1e-5
-η_k = lambda k: max(0.6*0.998**k,0.4)
-τ_k = lambda k: max(0.3*0.998**k,0.01)
-β_k = lambda k: min(5*1.002**k,20.)
-```
+$$
+\begin{align}
+&N = 90\\
+&m = 1000\\
+&\text{epochs} = 1 \\
+&δ = 1\times 10^{-5} && \text{Threshold of difference below which particles take a brownian motion step}\\
+&η_k = \max(0.6\cdot 0.9992^k,0.075) && \text{Learning rate}\\
+&τ_k =  \max(0.8\cdot0.9992^k,0.3) && \text{Exploration rate}\\
+&β_k =  \max(8\cdot1.002^k,20) && \text{1/Characteristic energy}
+\end{align}
+$$
 
-![](/home/franinsu/Documents/Lexing/CBO_RL/figs/Q_ctrl_SGD_CBO.png)
+![](/home/franinsu/Documents/Lexing/CBO_RL/figs/Q_ctrl_SGD_vs_CBO.png)
+
+To visualize the stability of the algorithms, we can show statistics (mean and sd) on 10 runs:
+
+![ ](/home/franinsu/Documents/Lexing/CBO_RL/figs/Q_ctrl_SGD_vs_CBO_summary_3.png)
+
+## Future Work
+
+- Applying  rigorous approaches to hyper-parameter tuning
+- Testing the CBO + BFF on more complex problems
+  - Higher dimensional
+  - Deeper neural networks
+  - Open AI Gyms examples
+  - Less smooth dynamics
+- Visualizing behavior of particles in CBO
+
+## Summary and Conclusion
+
+From the experiments on the simple environments, we note that
+
+- BFF and UR have similar performance using SGD and CBO, which are superior to DS, for $V$-evaluation and $Q$-control.
+
+- CBO and SGD have similar performances with BFF, UR, and DS in $V$-evaluation,  however CBO performs worse than SGD in $Q$-control. 
+
+Thus, we don't experience a notable advantage in the combination of BFF and CBO, for $V$-evaluation and $Q$-control, however we reaffirm the validity of BFF over DS.
+
