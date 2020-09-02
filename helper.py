@@ -53,6 +53,15 @@ class V_Net(nn.Module):
             nn.init.normal_(m.bias)
 
 
+class V_ResNet(V_Net):
+    def forward(self, x):
+        x = torch.cat((torch.sin(x), torch.cos(x)), 1)
+        x_1 = torch.cos(self.fc1(x))
+        x = torch.cos(self.fc2(x_1)+x_1)
+        x = self.fc3(x)
+        return x
+
+
 def gen_batches(N, M, Rem):
     P = torch.randperm(N)
     if Rem.size()[0] > 0:
@@ -75,7 +84,8 @@ def V_comp_0(V_net, V_net_comp, x_ls, n):
 
 
 def V_eval_SGD_gen(update_step):
-    def algo(S, R, α, σ, ϵ, V_net=V_Net(), M=1000, epochs=100, γ=0.9, τ=0.01, V_net_comp=None, n_comp=1000):
+    def algo(S, R, α, σ, ϵ, new_V_net=lambda: V_Net(), M=1000, epochs=100, γ=0.9, τ=0.01, V_net_comp=None, n_comp=1000):
+        V_net = new_V_net()
         Rem = torch.tensor([])
         N = S.size()[0]
         i = 0
@@ -162,10 +172,11 @@ def plotV(V_s, e_s, lb_s, V_star, lb_star):
 
 
 def V_eval_CBO_gen(L_f):
-    def algo(S, α, σ, ϵ, V_net=V_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
+    def algo(S, α, σ, ϵ, new_V_net=lambda: V_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
              τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, V_net_comp=None, n_comp=1000):
         with torch.no_grad():
-            V_θ = [V_Net() for _ in range(N)]
+            V_net = new_V_net()
+            V_θ = [new_V_net() for _ in range(N)]
             rem = torch.tensor([])
             L = torch.empty(N)
             n = S.size()[0]
@@ -303,6 +314,16 @@ class Q_Net(nn.Module):
             nn.init.normal_(m.bias)
 
 
+class Q_ResNet(Q_Net):
+    def forward(self, x):
+        x = torch.cat((torch.sin(x), torch.cos(x)), 1)
+        x_1 = self.fc1(x)
+        x = torch.cos(x_1)
+        x = torch.cos(self.fc2(x)+x_1)
+        x = self.fc3(x)
+        return x
+
+
 def Q_comp(Q_net, Q_net_comp, x_ls, n):
     diff = Q_net(x_ls)-Q_net_comp(x_ls)
     return np.sqrt(2*np.pi/n)*torch.norm(diff-torch.mean(diff, axis=0))
@@ -314,7 +335,8 @@ def Q_comp_0(Q_net, Q_net_comp, x_ls, n):
 
 
 def Q_SGD_gen(update_step):
-    def algo(S, A_idx, R, a_s, π, σ, ϵ, Q_net=Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, n=1000):
+    def algo(S, A_idx, R, a_s, π, σ, ϵ, new_Q_net=lambda k: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, n=1000):
+        Q_net = new_Q_net()
         Rem = torch.tensor([])
         N = S.size()[0]
         i = 0
@@ -448,10 +470,11 @@ def Q_ctrl_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ,
 
 def Q_CBO_gen(L_f):
     def algo(S, A_idx, R, a_s, π, σ, ϵ,
-             Q_net=Q_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
+             new_Q_net=lambda: Q_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
              τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, Q_net_comp=None, n_comp=1000, early_stop=None):
         with torch.no_grad():
-            Q_θ = [Q_Net() for _ in range(N)]
+            Q_net = new_Q_net()
+            Q_θ = [new_Q_net() for _ in range(N)]
             rem = torch.tensor([])
             L = torch.empty(N)
             n = S.size()[0]
