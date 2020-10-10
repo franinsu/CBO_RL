@@ -455,19 +455,21 @@ def Q_ctrl_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sam
 
 
 def Q_CBO_gen(L_f):
-    def algo(S, A_idx, R, a_s, π, σ, ϵ,
+    def algo(S, A_idx, R, a_s, π, sample,
              new_Q_net=lambda: Q_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
-             τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, Q_net_comp=None, n_comp=1000, early_stop=None):
+             τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, Q_net_comp=None,
+             x_ls = torch.linspace(0, 2*np.pi, 1000+1)[:-1], early_stop=None):
         with torch.no_grad():
             Q_net = new_Q_net()
             Q_θ = [new_Q_net() for _ in range(N)]
             rem = torch.tensor([])
             L = torch.empty(N)
+            x_ls = x_ls.view(-1,1)
+            n_comp = len(x_ls)
             n = S.size()[0]
             n_params = sum(param.numel() for param in Q_net.parameters())
             i = 0
             if Q_net_comp:
-                x_ls = torch.linspace(0, 2*np.pi, n+1)[:-1].view(-1, 1)
                 e = [Q_comp(Q_net, Q_net_comp, x_ls, n_comp)]
             for k in trange(epochs, leave=False, position=0, desc="Epoch"):
                 A, rem = gen_batches(n-2, m, rem)
@@ -478,7 +480,7 @@ def Q_CBO_gen(L_f):
                     τ = τ_k(i)
                     η = η_k(i)
                     i += 1
-                    L = L_f(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π=π, σ=σ, ϵ=ϵ)
+                    L = L_f(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π=π, sample=sample)
                     μ = torch.exp(-β * L)
                     Δx̄2 = 0
                     # Update parameters
@@ -506,14 +508,12 @@ def Q_CBO_gen(L_f):
     return algo
 
 
-def Q_ctrl_UR_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, σ, ϵ):
+def Q_ctrl_UR_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, sample):
     s = S[A_θ]
     r = R[A_θ].view(-1)
     a_idx = A_idx[A_θ].type(torch.LongTensor).view(-1)
     s_1 = S[A_θ+1]
-    â = torch.tensor([Categorical(probs=π_).sample()
-                       for π_ in π(a_s, s)]).view(*s.size())*2 - 1
-    ŝ_1 = s+â* ϵ+σ*np.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
+    ŝ_1 = [sample(s_) for s_ in s]
     j = torch.cat([(r + γ*torch.max(Q_j(s_1), axis=1).values -
                     Q_j(s)[np.arange(m), a_idx]).view(-1, 1) for Q_j in Q_θ], 1)
     ĵ = torch.cat([(r + γ*torch.max(Q_j(ŝ_1), axis=1).values -
@@ -521,7 +521,7 @@ def Q_ctrl_UR_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, σ, ϵ):
     return torch.sum(j*ĵ, 0)/(2*m)
 
 
-def Q_ctrl_DS_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, σ, ϵ):
+def Q_ctrl_DS_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, sample):
     s = S[A_θ]
     r = R[A_θ].view(-1)
     a_idx = A_idx[A_θ].type(torch.LongTensor).view(-1)
@@ -531,7 +531,7 @@ def Q_ctrl_DS_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, σ, ϵ):
     return torch.sum(j**2, 0)/(2*m)
 
 
-def Q_ctrl_BFF_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, σ, ϵ):
+def Q_ctrl_BFF_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, sample):
     s = S[A_θ]
     r = R[A_θ].view(-1)
     a_idx = A_idx[A_θ].type(torch.LongTensor).view(-1)
@@ -545,10 +545,9 @@ def Q_ctrl_BFF_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, σ, ϵ):
     return torch.sum(j*j̃, 0)/(2*m)
 
 
-def plotQ2(Q_dict, Q_star, lb_star, a_s):
+def plotQ2(Q_dict, Q_star, lb_star, a_s, x_s = torch.linspace(0, 2*np.pi, 1000)):
     n_r = len(Q_dict)
     fig, axg = plt.subplots(figsize=(12, 8), ncols=3, nrows=n_r)
-    x_s = torch.linspace(0, 2*np.pi, 1000)
     y_star = Q_star(x_s.view(-1, 1))
     a_n = len(a_s)
     pad = 5

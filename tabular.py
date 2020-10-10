@@ -81,36 +81,57 @@ class Q_Tabular(nn.Module):
             self.Q_matrix.grad.data.zero_()
 # %%
 sample = lambda s: sample_policy_discrete(s, π, σ, ϵ, a_s, 2, s_s, n_s)[0][-1]
+x_ls = torch.arange(n_s, dtype=np.int)
+common_args = {"new_Q_net": lambda: Q_Tabular(n_a, n_s),"epochs": 2,"x_ls":x_ls}
+sgd_args = {"M":1000, "τ_k":lambda k:0.1}
+cbo_args = {"N":30, "m":1000, "γ":0.9, "δ":1e-3, "τ_k":lambda k: 0.1, "η_k":lambda k: 0.5, "β_k":lambda k: 10}
+# %%
 Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-    S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Tabular(n_a, n_s), M=1000, epochs=20, τ_k=lambda k:0.01
+    S, A_idx, R, a_s, π, sample, **common_args, **sgd_args
 )
 # %%
-x_ls = torch.arange(n_s, dtype=np.int)
 Q_ctrl_UR_SGD, e_ctrl_UR_SGD = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-    S, A_idx, R, a_s, π, sample,new_Q_net=lambda: Q_Tabular(n_a, n_s), M=1000, epochs=20, τ_k=lambda k:0.01, Q_net_comp=Q_ctrl_UR_SGD_star, x_ls=x_ls
+    S, A_idx, R, a_s, π, sample, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
 Q_ctrl_DS_SGD, e_ctrl_DS_SGD = Q_SGD_gen(Q_ctrl_DS_SGD_update_step)(
-    S, A_idx, R, a_s, π, sample,new_Q_net=lambda: Q_Tabular(n_a, n_s), M=1000, epochs=20, τ_k=lambda k:0.01,Q_net_comp=Q_ctrl_UR_SGD_star, x_ls=x_ls
+    s, A_idx, r, a_s, π, sample, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
 Q_ctrl_BFF_SGD, e_ctrl_BFF_SGD = Q_SGD_gen(Q_ctrl_BFF_SGD_update_step)(
-    S, A_idx, R, a_s, π, sample,new_Q_net=lambda: Q_Tabular(n_a, n_s), M=1000, epochs=20, τ_k=lambda k:0.01,Q_net_comp=Q_ctrl_UR_SGD_star, x_ls=x_ls
+    S, A_idx, R, a_s, π, sample, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
-Q_ctrl_UR_CBO, e_ctrl_UR_CBO = Q_CBO_gen(Q_ctrl_UR_CBO_update_step)(
-    S, A_idx, R, a_s, π, sample,new_Q_net=lambda: Q_Tabular(n_a, n_s), M=1000, epochs=20, τ_k=lambda k:0.01, Q_net_comp=Q_ctrl_UR_SGD_star, x_ls=x_ls
+# %%
+Q_ctrl_UR_CBO, e_ctrl_UR_CBO = Q_CBO_gen(Q_ctrl_UR_CBO_L)(
+    S, A_idx, R, a_s, π, sample,**common_args, **cbo_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
-Q_ctrl_DS_CBO, e_ctrl_DS_CBO = Q_SGD_gen(Q_ctrl_DS_CBO_update_step)(
-    S, A_idx, R, a_s, π, sample,new_Q_net=lambda: Q_Tabular(n_a, n_s), M=1000, epochs=20, τ_k=lambda k:0.01,Q_net_comp=Q_ctrl_UR_SGD_star, x_ls=x_ls
+Q_ctrl_DS_CBO, e_ctrl_DS_CBO = Q_CBO_gen(Q_ctrl_DS_CBO_L)(
+    S, A_idx, R, a_s, π, sample,**common_args, **cbo_args, Q_net_comp=Q_ctrl_UR_SGD_star
 )
-Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_SGD_gen(Q_ctrl_BFF_CBO_update_step)(
-    S, A_idx, R, a_s, π, sample,new_Q_net=lambda: Q_Tabular(n_a, n_s), M=1000, epochs=20, τ_k=lambda k:0.01,Q_net_comp=Q_ctrl_UR_SGD_star, x_ls=x_ls
+Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
+    S, A_idx, R, a_s, π, sample,**common_args, **cbo_args, Q_net_comp=Q_ctrl_UR_SGD_star
 )
-    # def algo(S, A_idx, R, a_s, π, σ, ϵ,
-    #          new_Q_net=lambda: Q_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
-    #          τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, Q_net_comp=None, n_comp=1000, early_stop=None):
 # %%
 plotQ(
     [Q_ctrl_UR_SGD,Q_ctrl_DS_SGD,Q_ctrl_BFF_SGD],
     [e_ctrl_UR_SGD,e_ctrl_DS_SGD,e_ctrl_BFF_SGD],
     ["UR", "DS", "BFF"], Q_ctrl_UR_SGD_star, "UR*", a_s, x_ls)
-plt.savefig("figs/Q_ctrl_SGD_discrete.png")
+plt.savefig("figs/Q_ctrl_SGD_discrete_.png")
+# %%
+Q_dict = {
+    "SGD": [
+        [Q_ctrl_UR_SGD,Q_ctrl_DS_SGD,Q_ctrl_BFF_SGD],
+        [e_ctrl_UR_SGD,e_ctrl_DS_SGD,e_ctrl_BFF_SGD],
+        ["UR", "DS", "BFF"],
+        ["C0", "C1", "C2"],
+        ["solid","solid"]
+    ],
+    "BFF": [
+        [Q_ctrl_UR_CBO,Q_ctrl_DS_CBO,Q_ctrl_BFF_CBO],
+        [e_ctrl_UR_CBO,e_ctrl_DS_CBO,e_ctrl_BFF_CBO],
+        ["UR", "DS", "BFF"],
+        ["C0", "C1", "C2"],
+        ["solid","solid"]
+    ]
+}
+plotQ2(Q_dict, Q_ctrl_UR_SGD_star, "UR * SGD", a_s, x_s=x_ls)
+
 # %%

@@ -4,7 +4,6 @@
 from IPython import get_ipython
 
 # %% [markdown]
-# 
 #  # CBO Applied to RL
 
 # %%
@@ -38,31 +37,25 @@ from tqdm.auto import tqdm, trange
 # %% [markdown]
 #  - Markov decision process with a continuous state space $\mathbb S = \{s \in (0, 2\pi]\}$.
 #  - Dynamics described by
-# 
 #  $$
 #  \begin{align}
 #  &s_{m+1} = s_{m} + \alpha(s_m)\epsilon + \sigma(s_m)\sqrt{\epsilon} Z_m \\
 #  &\alpha(s) = 2 \sin(s) \cos(s), \quad \sigma(s) = 1 + \cos(s)^2, \quad \epsilon = 0.1
 #  \end{align}
 #  $$
-# 
 #  - Immediate reward function, $R(s)=(\cos(2s)+1)$.
 #  - Discount factor $\gamma=0.9$.
 #  - 3 layer FCNN, $V(s;\theta)$. Two hidden layers with $\cos$ activation function, and each hidden layer contains 50 neurons.
-# 
 #  $$
 #  \begin{align}
 #  &V(s ; \theta)=V\left(x ;\left\{w_{i}, b_{i}\right\}_{i=1}^{3}\right)=L_{w_{3}, b_{3}} \circ \cos \circ L_{w_{2}, b_{2}} \circ \cos \circ L_{w_{1}, b_{1}}((\cos s, \sin s)) \\
 #  &L_{w_{i}, b_{i}}(x)=w_{i} x+b_{i}, \quad w_{i} \in \mathbb{R}^{n_{i-1} \times n_{i}}, \quad b_{i} \in \mathbb{R}^{n_{i}}, \quad n_{0}=2, n_{1}=n_{2}=50, n_{3}=1
 #  \end{align}
 #  $$
-# 
 #  - $\theta^*$ is computed with Algorithms 1-4 based on trajectory $\{s_m\}_{m=1}^{10^6}$ with
-# 
 #  $$
 #  f\left(s_{m}, s_{m+1}, \theta\right)=R\left(s_{m}\right)+\gamma V\left(s_{m+1} ; \theta\right)-V\left(s_{m} ; \theta\right), \quad \tau=0.1, \quad M=1000
 #  $$
-# 
 #  - The SGD algorithm runs for a single epoch with the same initialization $\theta_0$.
 #  - Error at step $k$, $e_k$ is defined as $e_k=\| V(\cdot,\theta_k)-V^*\|_{L^2}$.
 #  - Reference $V^*(s)$ is computed by running Algorithm 1 for 10 epochs based on longer trajectory $\{s_m\}_{m=1}^{10^7}$, with $\tau=0.01$, $M=1000$.
