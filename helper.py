@@ -14,15 +14,6 @@ mpl.rcParams['figure.dpi'] = 120
 
 
 def sample_trajectory(s_0, α, σ, ϵ, m):
-    """Sample trajectory under the SDE ds = α(s)dt + σ(s)W_t
-
-    Args:
-        s_0 (torch.tensor): Starting state
-        m (int): Number of steps to take
-
-    Returns:
-        [torch.tensor]: Sample path (m, *s_0.size())
-    """
     s_0_size = s_0.size()
     S = torch.zeros(m, *s_0_size)
     S[0] = s_0
@@ -292,7 +283,6 @@ def sample_policy(s_0, π, σ, ϵ, a_s, m):
                 np.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
     return S.view(-1, 1), A_idx.view(-1, 1)
 
-
 class Q_Net(nn.Module):
     def __init__(self):
         super(Q_Net, self).__init__()
@@ -335,20 +325,21 @@ def Q_comp_0(Q_net, Q_net_comp, x_ls, n):
 
 
 def Q_SGD_gen(update_step):
-    def algo(S, A_idx, R, a_s, π, σ, ϵ, new_Q_net=lambda k: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, n=1000):
+    def algo(S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, x_ls = torch.linspace(0, 2*np.pi, 1000+1)[:-1]):
         Q_net = new_Q_net()
         Rem = torch.tensor([])
         N = S.size()[0]
         i = 0
         if Q_net_comp:
-            x_ls = torch.linspace(0, 2*np.pi, n+1)[:-1].view(-1, 1)
+            n = len(x_ls)
+            x_ls = x_ls.view(-1, 1)
             e = [Q_comp(Q_net, Q_net_comp, x_ls, n)]
         for k in trange(epochs, leave=False, position=0, desc="Epoch"):
             B, Rem = gen_batches(N-2, M, Rem)
             τ = τ_k(i)
             i += 1
             for B_θ in tqdm(B, leave=False, position=0, desc="Batch"):
-                update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, ϵ)
+                update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample)
                 with torch.no_grad():
                     for param in Q_net.parameters():
                         param -= τ/M*param.grad
@@ -361,14 +352,12 @@ def Q_SGD_gen(update_step):
     return algo
 
 
-def Q_eval_UR_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, ϵ):
+def Q_eval_UR_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample):
     s = S[B_θ]
     r = R[B_θ].view(-1)
     a_idx = A_idx[B_θ].type(torch.LongTensor).view(-1)
     s_1 = S[B_θ+1]
-    ã = torch.tensor([Categorical(probs=π_).sample()
-                       for π_ in π(a_s, s)]).view(*s.size())*2 - 1
-    s̃_1 = s + ã * ϵ+σ*np.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
+    s̃_1 = sample(s)
     q = Q_net(s)[np.arange(M), a_idx]
     j = r + γ*torch.sum(Q_net(s_1)*π(a_s, s_1), axis=1) - q
     j̃ = r + γ*torch.sum(Q_net(s̃_1)*π(a_s, s̃_1), axis=1) - q
@@ -376,7 +365,7 @@ def Q_eval_UR_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, 
     j.backward(j̃)
 
 
-def Q_eval_DS_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, ϵ):
+def Q_eval_DS_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample):
     s = S[B_θ]
     r = R[B_θ].view(-1)
     a_idx = A_idx[B_θ].type(torch.LongTensor).view(-1)
@@ -387,7 +376,7 @@ def Q_eval_DS_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, 
     j.backward(j)
 
 
-def Q_eval_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, ϵ):
+def Q_eval_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample):
     s = S[B_θ]
     r = R[B_θ].view(-1)
     a_idx = A_idx[B_θ].type(torch.LongTensor).view(-1)
@@ -401,11 +390,10 @@ def Q_eval_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ,
     j.backward(j̃)
 
 
-def plotQ(Q_s, e_s, lb_s, Q_star, lb_star, a_s):
+def plotQ(Q_s, e_s, lb_s, Q_star, lb_star, a_s, x_s = torch.linspace(0, 2*np.pi, 1000)):
     a_n = len(a_s)
     n = len(Q_s)
     fig, axs = plt.subplots(figsize=(12, 3), ncols=a_n+1)
-    x_s = torch.linspace(0, 2*np.pi, 1000)
     y_star = Q_star(x_s.view(-1, 1))
     y_s = torch.cat([Q(x_s.view(-1, 1)).view(1, -1, a_n) for Q in Q_s])
     y_s -= torch.mean(y_s-y_star.expand(n, -1, a_n), axis=1).view(n, -1, a_n)
@@ -428,14 +416,12 @@ def plotQ(Q_s, e_s, lb_s, Q_star, lb_star, a_s):
     plt.subplots_adjust(right=0.87)
 
 
-def Q_ctrl_UR_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, ϵ):
+def Q_ctrl_UR_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample):
     s = S[B_θ]
     r = R[B_θ].view(-1)
     a_idx = A_idx[B_θ].type(torch.LongTensor).view(-1)
     s_1 = S[B_θ+1]
-    â = torch.tensor([Categorical(probs=π_).sample()
-                       for π_ in π(a_s, s)]).view(*s.size())*2 - 1
-    ŝ_1 = s+â* ϵ+σ*np.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
+    ŝ_1 = [sample(s_) for s_ in s]
     q = Q_net(s)[np.arange(M), a_idx]
     j = r + γ*torch.max(Q_net(s_1), axis=1).values - q
     ĵ = r + γ*torch.max(Q_net(ŝ_1), axis=1).values - q
@@ -443,7 +429,7 @@ def Q_ctrl_UR_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, 
     ĵ.backward(j)
 
 
-def Q_ctrl_DS_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, ϵ):
+def Q_ctrl_DS_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample):
     s = S[B_θ]
     r = R[B_θ].view(-1)
     a_idx = A_idx[B_θ].type(torch.LongTensor).view(-1)
@@ -454,7 +440,7 @@ def Q_ctrl_DS_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, 
     j.backward(j)
 
 
-def Q_ctrl_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, σ, ϵ):
+def Q_ctrl_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample):
     s = S[B_θ]
     r = R[B_θ].view(-1)
     a_idx = A_idx[B_θ].type(torch.LongTensor).view(-1)

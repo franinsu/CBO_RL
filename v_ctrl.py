@@ -5,7 +5,7 @@ from IPython import get_ipython
 import torch.nn as nn
 import pandas as pd
 import seaborn as sns
-
+import pickle
 # %%
 def π(a, s):
     return torch.tensor([1 / 2.0, 1 / 2.0]) * torch.ones_like(s)
@@ -17,14 +17,13 @@ def r(s):
 ϵ = 2.0 * np.pi / 32.0
 s_0 = torch.tensor([0.0])
 a_s = torch.tensor([-1.0, 1.0])
-def new_Q_net(): return Q_ResNet()
 # %%
+def new_Q_net(): return Q_ResNet()
 # %%
 # S, A_idx = sample_policy(s_0, π, σ, ϵ, a_s, int(1e6))
 # R = r(S)
 # S_long, A_idx_long = sample_policy(s_0, π, σ, ϵ, a_s, int(1e7))
 # R_long = r(S_long)
-
 
 # %%
 # torch.save(S_long, 'cache/S_long_2.pt')
@@ -52,17 +51,22 @@ A_idx = torch.load("cache/A_idx_2.pt")
 # def η_k(k): return max(0.1*0.9992**k, 0.075)
 # def τ_k(k): return max(0.8*0.9992**k, 0.3)
 # def β_k(k): return min(8*1.002**k,20)
-# early_stop = 1000rl_UR_SGD_update_step)(
+# early_stop = 1000
+# Q_ctrl_UR_SGD_star, _ = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
 #     S_long, A_idx_long, R_long, a_s, π, σ, ϵ, M=1000, epochs=10, τ_k=lambda k:0.01
 # )
-# torch.save(Q_ctrl_UR_SGD_star, "cache/Q_ctrl_UR_SGD_star.pt")
-Q_ctrl_UR_SGD_star = torch.load("cache/Q_ctrl_UR_SGD_star.pt")
 # %%
+# torch.save(Q_ctrl_UR_SGD_star, "cache/Q_ctrl_UR_SGD_star.pt")
+# %%
+Q_ctrl_UR_SGD_star = torch.load("cache/Q_ctrl_UR_SGD_star.pt")
 # %%
 M = 1000
 epochs = 1
+# %%
+params = pickle.load(open( "cache/sgd_params.p", "rb" ) )
+τ_i,τ_f,τ_r = [params[x] for x in ['τ_i','τ_f','τ_f']]
 def τ_k(k):
-    return max(0.5 * 0.9992 ** k, 0.075)
+    return max( τ_i* τ_r** k, τ_f*τ_i)
 #%%
 k_s = np.arange(M)
 fig, ax = plt.subplots(figsize=(10, 5))
@@ -84,41 +88,34 @@ def run_SGD_all():
     )
     return (Q_ctrl_UR_SGD, Q_ctrl_DS_SGD, Q_ctrl_BFF_SGD), (e_ctrl_UR_SGD, e_ctrl_DS_SGD, e_ctrl_BFF_SGD)
 # %%
-# Q_s, e_s = run_SGD_all()
-# lb_s = ["UR", "DS", "BFF"]
-# plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
+Q_s, e_s = run_SGD_all()
+lb_s = ["UR", "DS", "BFF"]
+plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
 
 # %%
 # N = 90
 # m = 1000
 # epochs = 1
 # δ = 1e-5
-
 # def η_k(k): return max(0.1*0.9992**k, 0.075)
 # def τ_k(k): return max(0.8*0.9992**k, 0.3)
 # def β_k(k): return min(8*1.002**k,20)
 # early_stop = 1000
 # %%
-N = 90
-m = 1000
-epochs = 1
-δ = 1e-5
-
-
-def η_k(k):
-    return max(0.1 * 0.9992 ** k, 0.075)
-
-
-def τ_k(k):
-    return max(0.7 * 0.9992 ** k, 0.2)
-
-
-def β_k(k):
-    return min(8 * 1.002 ** k, 20)
-
-
-early_stop = 1000
-
+# N = 90
+# m = 1000
+# epochs = 1
+# δ = 1e-5
+# def η_k(k): return max(0.1 * 0.9992 ** k, 0.075)
+# def τ_k(k): return max(0.7 * 0.9992 ** k, 0.2)
+# def β_k(k): return min(8 * 1.002 ** k, 20)
+# early_stop = 1000
+# %%
+params = pickle.load(open( "cache/cbo_params.p", "rb" ) )
+η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r = [params[x] for x in ['η_i','η_f','η_r','τ_i','τ_f','τ_r','β_i','β_f','β_r']]
+def η_k(k): return max( η_i* η_r** k, η_f*η_i)
+def τ_k(k): return max( τ_i* τ_r** k, τ_f*τ_i)
+def β_k(k): return min( β_i* β_r** k, β_f*β_i)
 # %%
 k_s = np.arange(early_stop)
 fig, axs = plt.subplots(figsize=(10, 5), ncols=3)
@@ -127,8 +124,6 @@ for i, (f, s) in enumerate(zip([η_k, τ_k, β_k], ["η_k", "τ_k", "β_k"])):
     axs[i].set_title(s)
 
 # %%
-
-
 def run_CBO_all():
     Q_ctrl_UR_CBO, e_ctrl_UR_CBO = Q_CBO_gen(Q_ctrl_UR_CBO_L)(
         S,
@@ -191,44 +186,10 @@ def run_CBO_all():
         (Q_ctrl_UR_CBO, Q_ctrl_DS_CBO, Q_ctrl_BFF_CBO),
         (e_ctrl_UR_CBO, e_ctrl_DS_CBO, e_ctrl_BFF_CBO),
     )
-
-
 # %%
-
-# Q_s, e_s = run_all()
-# #%%
-# (Q_ctrl_UR_CBO, Q_ctrl_DS_CBO, Q_ctrl_BFF_CBO) = Q_s
-# (e_ctrl_UR_CBO, e_ctrl_DS_CBO, e_ctrl_BFF_CBO) = e_s
-# #%%
-# lb_s = ["UR","DS","BFF"]
-# plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
-
-# Q_dict = {
-#     "UR": [
-#         [Q_ctrl_UR_SGD, Q_ctrl_UR_CBO],
-#         [e_ctrl_UR_SGD, e_ctrl_UR_CBO],
-#         ["SGD", "CBO"],
-#         ["C0", "C1"],
-#         ["solid", "solid"]
-#     ],
-#     "DS": [
-#         [Q_ctrl_DS_SGD, Q_ctrl_DS_CBO],
-#         [e_ctrl_DS_SGD, e_ctrl_DS_CBO],
-#         ["SGD", "CBO"],
-#         ["C0", "C1"],
-#         ["solid", "solid"]
-#     ],
-#     "BFF": [
-#         [Q_ctrl_BFF_SGD, Q_ctrl_BFF_CBO],
-#         [e_ctrl_BFF_SGD, e_ctrl_BFF_CBO],
-#         ["SGD", "CBO"],
-#         ["C0", "C1"],
-#         ["solid", "solid"]
-#     ]
-# }
-# plotQ2(Q_dict, Q_ctrl_UR_SGD_star, "UR * SGD", a_s)
-# plt.savefig("figs/Q_ctrl_SGD_vs_CBO_2.png")
-
+Q_s, e_s = run_CBO_all()
+lb_s = ["UR", "DS", "BFF"]
+plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
 # %%
 all_data = pd.DataFrame(columns=["i", "x", "y", "sampling", "algo", "plot"])
 x_s = torch.linspace(0, 2 * np.pi, 100)
@@ -304,49 +265,6 @@ g.set_titles(col_template="{col_name}", row_template="{row_name}")
 plt.tight_layout()
 plt.subplots_adjust(right=0.9)
 g.add_legend(title="")
-plt.savefig("figs/Q_ctrl_SGD_vs_CBO_summary_ResNet.png")
-# %%
-# N = 90
-# m = 1000
-# epochs = 1
-# δ = 1e-5
-# early_stop = 1000
-#%%
-# def test(N=90):
-#     Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
-#         S, A_idx, R, a_s, π, σ, ϵ,
-#         N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k, β_k=β_k, δ=1e-5, Q_net_comp=Q_ctrl_UR_SGD_star,early_stop=early_stop
-#     )
-#     Q_s = [Q_ctrl_BFF_CBO]
-#     e_s = [e_ctrl_BFF_CBO]
-#     lb_s = ["BFF"]
-#     plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
-#     plt.show()
-
-# #%%
-# for x in [0.3,0.4,0.5]:
-#     def η_k(k): return max(0.1*0.9992**k, 0.075)
-#     def τ_k(k): return max(0.8*0.9992**k, x)
-#     def β_k(k): return min(8*1.002**k,20)
-#     test()
-#     print(f"x={x}")
-
-# # %%
-# def η_k(k): return max(0.1*0.9992**k, 0.08)
-# def τ_k(k): return max(0.75*0.9992**k, 0.3)
-# def β_k(k): return min(8*1.002**k,20)
-# Q_s = []
-# e_s = []
-# lb_s = []
-# for _ in range(3):
-#     Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
-#         S, A_idx, R, a_s, π, σ, ϵ,
-#         N=N, m=m, epochs=1, τ_k=τ_k, η_k=η_k, β_k=β_k, δ=1e-5, Q_net_comp=Q_ctrl_UR_SGD_star,early_stop=early_stop
-#     )
-#     Q_s.append(Q_ctrl_BFF_CBO)
-#     e_s.append(e_ctrl_BFF_CBO)
-#     lb_s.append("BFF")
-# plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
-
+plt.savefig("figs/Q_ctrl_SGD_vs_CBO_summary_ResNet_2.png")
 
 # %%

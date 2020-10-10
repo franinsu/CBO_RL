@@ -90,13 +90,13 @@ M = int(1e2)
 # %%
 
 
-def τ_k(k): return 0.01
-
+# def τ_k(k): return 0.01
+def τ_k(k): return 0.002
 
 e_ls_SGD, L_ls_SGD, x_ls_SGD = SGD(M=M, τ_k=τ_k, σ=σ)
 # %%
 N = 5
-λ = 1.5
+λ = 1
 
 
 def τ_k(k): return 1
@@ -110,7 +110,19 @@ def β_k(k): return 30
 
 e_ls_CBO, L_ls_CBO, x_ls_CBO, ē_ls_CBO, L̄_ls_CBO, x̄_ls_CBO = CBO(
     M=M, N=N, σ=σ, λ=λ, τ_k=τ_k, η_k=η_k, β_k=β_k)
-
+#%%
+def pltRun(x_ls, L_ls, e_ls, color, M, label, label_rep):
+    rgba = c.to_rgb(color)
+    alphas = np.linspace(0.1, 1, M)
+    rgba_colors = np.zeros((M, 4))
+    rgba_colors[:, :3] = rgba
+    rgba_colors[:, 3] = alphas
+    axs[0].scatter(x_ls, L_ls, color=rgba_colors, label=f"$x$ SGD", s=20)
+    axs[0].plot(x_ls, L_ls, color=rgba, alpha=0.5)
+    axs[1].plot(e_ls, color=rgba)
+    if label not in labels:
+        labels.append(label)
+        labels_rep.append(label_rep)
 # %%
 fig, axs = plt.subplots(ncols=2, figsize=(15, 5))
 x_ls_all = torch.linspace(-3, 3, 200)
@@ -126,20 +138,6 @@ labels = [f"$L(x)$", f"$x^*$"]
 labels_rep = ["k-", "r."]
 
 
-def pltRun(x_ls, L_ls, e_ls, color, M, label, label_rep):
-    rgba = c.to_rgb(color)
-    alphas = np.linspace(0.1, 1, M)
-    rgba_colors = np.zeros((M, 4))
-    rgba_colors[:, :3] = rgba
-    rgba_colors[:, 3] = alphas
-    axs[0].scatter(x_ls, L_ls, color=rgba_colors, label=f"$x$ SGD", s=20)
-    axs[0].plot(x_ls, L_ls, color=rgba, alpha=0.5)
-    axs[1].plot(e_ls, color=rgba)
-    if label not in labels:
-        labels.append(label)
-        labels_rep.append(label_rep)
-
-
 pltRun(x_ls_SGD, L_ls_SGD, e_ls_SGD, "C0", M, r"$x_{SGD}$", "C0")
 pltRun(x̄_ls_CBO, L̄_ls_CBO, ē_ls_CBO, "C1", M, r"$\bar{x}_{CBO}$", "C1")
 for i in range(N):
@@ -153,6 +151,9 @@ fig.legend(labels_rep,
            )
 
 plt.subplots_adjust(right=0.94)
+plt.savefig("figs/Simpler_SGD_vs_CBO.png")
+# %%
 
-plt.show()
+# %%
+
 # %%
