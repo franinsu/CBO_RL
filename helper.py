@@ -283,6 +283,28 @@ def sample_policy(s_0, π, σ, ϵ, a_s, m):
                 np.sqrt(ϵ)*torch.normal(mean=torch.zeros_like(s))
     return S.view(-1, 1), A_idx.view(-1, 1)
 
+
+def sample_policy_discrete(s_0, π, σ, ϵ, a_s, m, s_s, n_s, verbose=False):
+    # S returned will represent indices
+    s_0 = s_0.view(s_0.size()[0], -1)
+    s_0_size = s_0.size()
+    S = torch.zeros(m, *s_0_size, dtype=int)
+    S[0] = s_0
+    A_idx = torch.zeros(m, s_0_size[0])
+    z = torch.zeros(s_0_size, dtype=float)
+    if verbose:
+        i_range = trange(m-1, leave=False, position=0, desc="Epoch")
+    else:
+        i_range = range(m-1)
+    for i in i_range:
+        for j, s in enumerate(S[i]):
+            A_idx[i, j] = Categorical(probs=π(a_s, s_s[s])).sample()
+            a = a_s[int(A_idx[i, j].item())]
+            s̃ = s_s[s]+(2*np.pi/n_s)*a*ϵ+σ*np.sqrt(ϵ)*torch.normal(mean=z)
+            S[i+1, j] = torch.argmin(torch.abs(s̃ - s_s))
+    return S.squeeze(2), A_idx
+
+
 class Q_Net(nn.Module):
     def __init__(self):
         super(Q_Net, self).__init__()
@@ -314,6 +336,24 @@ class Q_ResNet(Q_Net):
         return x
 
 
+class Q_Tabular(nn.Module):
+    def __init__(self, n_a, n_s):
+        super(Q_Tabular, self).__init__()
+        self.Q_matrix = torch.normal(mean=torch.zeros(n_s, n_a))
+        self.Q_matrix.requires_grad = True
+        self.n_s = n_s
+
+    def forward(self, s):
+        return self.Q_matrix[torch.remainder(torch.tensor(s), self.n_s), :].squeeze()
+
+    def parameters(self):
+        return [self.Q_matrix]
+
+    def zero_grad(self):
+        if self.Q_matrix.grad != None:
+            self.Q_matrix.grad.data.zero_()
+
+
 def Q_comp(Q_net, Q_net_comp, x_ls, n):
     diff = Q_net(x_ls)-Q_net_comp(x_ls)
     return np.sqrt(2*np.pi/n)*torch.norm(diff-torch.mean(diff, axis=0))
@@ -325,7 +365,7 @@ def Q_comp_0(Q_net, Q_net_comp, x_ls, n):
 
 
 def Q_SGD_gen(update_step):
-    def algo(S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, x_ls = torch.linspace(0, 2*np.pi, 1000+1)[:-1]):
+    def algo(S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1]):
         Q_net = new_Q_net()
         Rem = torch.tensor([])
         N = S.size()[0]
@@ -390,7 +430,7 @@ def Q_eval_BFF_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sam
     j.backward(j̃)
 
 
-def plotQ(Q_s, e_s, lb_s, Q_star, lb_star, a_s, x_s = torch.linspace(0, 2*np.pi, 1000)):
+def plotQ(Q_s, e_s, lb_s, Q_star, lb_star, a_s, x_s=torch.linspace(0, 2*np.pi, 1000)):
     a_n = len(a_s)
     n = len(Q_s)
     fig, axs = plt.subplots(figsize=(12, 3), ncols=a_n+1)
@@ -458,13 +498,13 @@ def Q_CBO_gen(L_f):
     def algo(S, A_idx, R, a_s, π, sample,
              new_Q_net=lambda: Q_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
              τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, Q_net_comp=None,
-             x_ls = torch.linspace(0, 2*np.pi, 1000+1)[:-1], early_stop=None):
+             x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], early_stop=None):
         with torch.no_grad():
             Q_net = new_Q_net()
             Q_θ = [new_Q_net() for _ in range(N)]
             rem = torch.tensor([])
             L = torch.empty(N)
-            x_ls = x_ls.view(-1,1)
+            x_ls = x_ls.view(-1, 1)
             n_comp = len(x_ls)
             n = S.size()[0]
             n_params = sum(param.numel() for param in Q_net.parameters())
@@ -480,7 +520,8 @@ def Q_CBO_gen(L_f):
                     τ = τ_k(i)
                     η = η_k(i)
                     i += 1
-                    L = L_f(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π=π, sample=sample)
+                    L = L_f(Q_θ, A_θ, m, γ, S, A_idx,
+                            R, a_s, π=π, sample=sample)
                     μ = torch.exp(-β * L)
                     Δx̄2 = 0
                     # Update parameters
@@ -545,7 +586,7 @@ def Q_ctrl_BFF_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, sample):
     return torch.sum(j*j̃, 0)/(2*m)
 
 
-def plotQ2(Q_dict, Q_star, lb_star, a_s, x_s = torch.linspace(0, 2*np.pi, 1000)):
+def plotQ2(Q_dict, Q_star, lb_star, a_s, x_s=torch.linspace(0, 2*np.pi, 1000)):
     n_r = len(Q_dict)
     fig, axg = plt.subplots(figsize=(12, 8), ncols=3, nrows=n_r)
     y_star = Q_star(x_s.view(-1, 1))
