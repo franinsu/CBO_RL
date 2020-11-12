@@ -1,4 +1,4 @@
 # TODO
-- Perform hyperparameter tuning
-- Tabular case
-- Improved readme
+- Readme.md
+- Docstrings
+- Cleanup of code

@@ -269,13 +269,17 @@ def plotV2(V_dict, V_star, lb_star):
     plt.subplots_adjust(left=0.15, right=0.90)
 
 
-def sample_policy(s_0, π, σ, ϵ, a_s, m):
+def sample_policy(s_0, π, σ, ϵ, a_s, m, verbose=False):
     s_0 = s_0.view(s_0.size()[0], -1)
     s_0_size = s_0.size()
     S = torch.zeros(m, *s_0_size)
     S[0] = s_0
     A_idx = torch.zeros(m, s_0_size[0])
-    for i in trange(m-1):
+    if verbose:
+        i_range = trange(m-1, leave=False, position=0, desc="Samples")
+    else:
+        i_range = range(m-1)
+    for i in i_range:
         for j, s in enumerate(S[i]):
             A_idx[i, j] = Categorical(probs=π(a_s, s)).sample()
             a = A_idx[i, j]*2. - 1.
@@ -293,7 +297,7 @@ def sample_policy_discrete(s_0, π, σ, ϵ, a_s, m, s_s, n_s, verbose=False):
     A_idx = torch.zeros(m, s_0_size[0])
     z = torch.zeros(s_0_size, dtype=float)
     if verbose:
-        i_range = trange(m-1, leave=False, position=0, desc="Epoch")
+        i_range = trange(m-1, leave=False, position=0, desc="Samples")
     else:
         i_range = range(m-1)
     for i in i_range:
@@ -461,7 +465,8 @@ def Q_ctrl_UR_SGD_update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, samp
     r = R[B_θ].view(-1)
     a_idx = A_idx[B_θ].type(torch.LongTensor).view(-1)
     s_1 = S[B_θ+1]
-    ŝ_1 = [sample(s_) for s_ in s]
+    # ŝ_1 = [sample(s_) for s_ in s]
+    ŝ_1 = torch.tensor([sample(s_) for s_ in s]).view(-1,1)
     q = Q_net(s)[np.arange(M), a_idx]
     j = r + γ*torch.max(Q_net(s_1), axis=1).values - q
     ĵ = r + γ*torch.max(Q_net(ŝ_1), axis=1).values - q
@@ -554,7 +559,8 @@ def Q_ctrl_UR_CBO_L(Q_θ, A_θ, m, γ, S, A_idx, R, a_s, π, sample):
     r = R[A_θ].view(-1)
     a_idx = A_idx[A_θ].type(torch.LongTensor).view(-1)
     s_1 = S[A_θ+1]
-    ŝ_1 = [sample(s_) for s_ in s]
+    # ŝ_1 = [sample(s_) for s_ in s]
+    ŝ_1 = torch.tensor([sample(s_) for s_ in s]).view(-1,1)
     j = torch.cat([(r + γ*torch.max(Q_j(s_1), axis=1).values -
                     Q_j(s)[np.arange(m), a_idx]).view(-1, 1) for Q_j in Q_θ], 1)
     ĵ = torch.cat([(r + γ*torch.max(Q_j(ŝ_1), axis=1).values -

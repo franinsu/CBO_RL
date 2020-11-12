@@ -1,6 +1,6 @@
 # %%
 import torch
-from helper import *
+from RL_Optimization import *
 from IPython import get_ipython
 import torch.nn as nn
 import pandas as pd
@@ -55,11 +55,12 @@ def sample(s): return sample_policy_discrete(
     s, π, σ, ϵ, a_s, 2, s_s, n_s)[0][-1]
 
 x_ls = torch.arange(n_s, dtype=np.int)
+args_0 = [S, A_idx, R, a_s, π, sample]
 common_args = {"new_Q_net": lambda: Q_Tabular(
     n_a, n_s), "epochs": 5, "x_ls": x_ls}
-sgd_args = {"M": 1000, "τ_k": lambda k: 0.2*0.999**k}
-cbo_args = {"N": 30, "m": 1000, "γ": 0.9, "δ": 1e-3,
-            "τ_k": lambda k: 0.2*0.999**k, "η_k": lambda k: 0.2, "β_k": lambda k: 10*1.001**k}
+sgd_args = {"M": 1000, "τ_k": lambda k: 0.8*0.9999**k}
+cbo_args = {"N": 30, "m": 1000, "γ": 0.9, "δ": 1e-4,
+            "τ_k": lambda k: 0.4*0.9995**k, "η_k": lambda k: 0.8, "β_k": lambda k: 12*1.001**k}
 # %%
 # Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
 #     S_long, A_idx_long, R_long, a_s, π, sample, **common_args, **sgd_args
@@ -69,23 +70,23 @@ cbo_args = {"N": 30, "m": 1000, "γ": 0.9, "δ": 1e-3,
 Q_ctrl_UR_SGD_star = torch.load("cache/Q_ctrl_UR_SGD_star_tabular.pt")
 # %%
 Q_ctrl_UR_SGD, e_ctrl_UR_SGD = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-    S, A_idx, R, a_s, π, sample, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
+    *args_0, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
 Q_ctrl_DS_SGD, e_ctrl_DS_SGD = Q_SGD_gen(Q_ctrl_DS_SGD_update_step)(
-    S, A_idx, R, a_s, π, sample, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
+    *args_0, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
 Q_ctrl_BFF_SGD, e_ctrl_BFF_SGD = Q_SGD_gen(Q_ctrl_BFF_SGD_update_step)(
-    S, A_idx, R, a_s, π, sample, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
+    *args_0, **common_args, **sgd_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
 # %%
 Q_ctrl_UR_CBO, e_ctrl_UR_CBO = Q_CBO_gen(Q_ctrl_UR_CBO_L)(
-    S, A_idx, R, a_s, π, sample, **common_args, **cbo_args,  Q_net_comp=Q_ctrl_UR_SGD_star
+    *args_0, **common_args, **cbo_args,  Q_net_comp=Q_ctrl_UR_SGD_star
 )
 Q_ctrl_DS_CBO, e_ctrl_DS_CBO = Q_CBO_gen(Q_ctrl_DS_CBO_L)(
-    S, A_idx, R, a_s, π, sample, **common_args, **cbo_args, Q_net_comp=Q_ctrl_UR_SGD_star
+    *args_0, **common_args, **cbo_args, Q_net_comp=Q_ctrl_UR_SGD_star
 )
 Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
-    S, A_idx, R, a_s, π, sample, **common_args, **cbo_args, Q_net_comp=Q_ctrl_UR_SGD_star
+    *args_0, **common_args, **cbo_args, Q_net_comp=Q_ctrl_UR_SGD_star
 )
 # %%
 Q_dict = {
@@ -106,6 +107,3 @@ Q_dict = {
 }
 plotQ2(Q_dict, Q_ctrl_UR_SGD_star, "UR * SGD", a_s, x_s=x_ls)
 plt.savefig("figs/Q_ctrl_discrete_.png")
-# %%
-
-# %%

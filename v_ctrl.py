@@ -1,17 +1,21 @@
 # %%
 import torch
-from helper import *
+from RL_Optimization import *
 from IPython import get_ipython
 import torch.nn as nn
 import pandas as pd
 import seaborn as sns
 import pickle
 # %%
+
+
 def π(a, s):
     return torch.tensor([1 / 2.0, 1 / 2.0]) * torch.ones_like(s)
 
+
 def r(s):
     return torch.sin(s) + 1
+
 
 σ = 0.2
 ϵ = 2.0 * np.pi / 32.0
@@ -43,15 +47,21 @@ R = torch.load("cache/R_2.pt")
 A_idx = torch.load("cache/A_idx_2.pt")
 
 # %%
-# Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctN = 90
-# m = 1000
-# epochs = 1
-# δ = 1e-5
+M = 1000
+epochs = 1
+δ = 1e-5
+early_stop = 1000
+
+
+def sample(s): return sample_policy(
+    s, π, σ, ϵ, a_s, 2)[0][-1]
+
+
+args_0 = [S, A_idx, R, a_s, π, sample]
 
 # def η_k(k): return max(0.1*0.9992**k, 0.075)
 # def τ_k(k): return max(0.8*0.9992**k, 0.3)
 # def β_k(k): return min(8*1.002**k,20)
-# early_stop = 1000
 # Q_ctrl_UR_SGD_star, _ = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
 #     S_long, A_idx_long, R_long, a_s, π, σ, ϵ, M=1000, epochs=10, τ_k=lambda k:0.01
 # )
@@ -60,41 +70,43 @@ A_idx = torch.load("cache/A_idx_2.pt")
 # %%
 Q_ctrl_UR_SGD_star = torch.load("cache/Q_ctrl_UR_SGD_star.pt")
 # %%
-M = 1000
-epochs = 1
+common_args = {"new_Q_net": new_Q_net,
+               "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs}
 # %%
-params = pickle.load(open( "cache/sgd_params.p", "rb" ) )
-τ_i,τ_f,τ_r = [params[x] for x in ['τ_i','τ_f','τ_f']]
+params = pickle.load(open("cache/sgd_params.p", "rb"))
+τ_i, τ_f, τ_r = [params[x] for x in ['τ_i', 'τ_f', 'τ_f']]
+
+
 def τ_k(k):
-    return max( τ_i* τ_r** k, τ_f*τ_i)
+    return max(τ_i * τ_r ** k, τ_f*τ_i)
+
+
+sgd_args = {"τ_k": τ_k, "M": M}
 #%%
 k_s = np.arange(M)
 fig, ax = plt.subplots(figsize=(10, 5))
 ax.plot(k_s, [τ_k(k) for k in k_s])
 ax.set_title(f"$τ_k$")
 # %%
+
+
 def run_SGD_all():
-    Q_ctrl_UR_SGD, e_ctrl_UR_SGD = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-        S, A_idx, R, a_s, π, σ, ϵ,new_Q_net=new_Q_net,
-        M=M, epochs=epochs, τ_k=τ_k, Q_net_comp=Q_ctrl_UR_SGD_star
-    )
-    Q_ctrl_DS_SGD, e_ctrl_DS_SGD = Q_SGD_gen(Q_ctrl_DS_SGD_update_step)(
-        S, A_idx, R, a_s, π, σ, ϵ,new_Q_net=new_Q_net,
-        M=M, epochs=epochs, τ_k=τ_k, Q_net_comp=Q_ctrl_UR_SGD_star
-    )
-    Q_ctrl_BFF_SGD, e_ctrl_BFF_SGD = Q_SGD_gen(Q_ctrl_BFF_SGD_update_step)(
-        S, A_idx, R, a_s, π, σ, ϵ, new_Q_net=new_Q_net,
-        M=M, epochs=epochs, τ_k=τ_k, Q_net_comp=Q_ctrl_UR_SGD_star
-    )
-    return (Q_ctrl_UR_SGD, Q_ctrl_DS_SGD, Q_ctrl_BFF_SGD), (e_ctrl_UR_SGD, e_ctrl_DS_SGD, e_ctrl_BFF_SGD)
-# %%
+    sgd_u_s = [Q_ctrl_UR_SGD_update_step,
+               Q_ctrl_DS_SGD_update_step, Q_ctrl_BFF_SGD_update_step]
+    Qs, es = [], []
+    for u_s in sgd_u_s:
+        q, e = Q_SGD_gen(u_s)(
+            *args_0, **common_args, **sgd_args)
+        Qs.append(q)
+        es.append(e)
+    return (Qs, es)
+
+    # %%
 Q_s, e_s = run_SGD_all()
 lb_s = ["UR", "DS", "BFF"]
 plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
 
 # %%
-# N = 90
-# m = 1000
 # epochs = 1
 # δ = 1e-5
 # def η_k(k): return max(0.1*0.9992**k, 0.075)
@@ -111,11 +123,20 @@ plotQ(Q_s, e_s, lb_s, Q_ctrl_UR_SGD_star, "UR *", a_s)
 # def β_k(k): return min(8 * 1.002 ** k, 20)
 # early_stop = 1000
 # %%
-params = pickle.load(open( "cache/cbo_params.p", "rb" ) )
-η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r = [params[x] for x in ['η_i','η_f','η_r','τ_i','τ_f','τ_r','β_i','β_f','β_r']]
-def η_k(k): return max( η_i* η_r** k, η_f*η_i)
-def τ_k(k): return max( τ_i* τ_r** k, τ_f*τ_i)
-def β_k(k): return min( β_i* β_r** k, β_f*β_i)
+params = pickle.load(open("cache/cbo_params.p", "rb"))
+η_i, η_f, η_r, τ_i, τ_f, τ_r, β_i, β_f, β_r = [params[x] for x in [
+    'η_i', 'η_f', 'η_r', 'τ_i', 'τ_f', 'τ_r', 'β_i', 'β_f', 'β_r']]
+N = 90
+m = 1000
+
+
+def η_k(k): return max(η_i * η_r ** k, η_f*η_i)
+def τ_k(k): return max(τ_i * τ_r ** k, τ_f*τ_i)
+def β_k(k): return min(β_i * β_r ** k, β_f*β_i)
+
+
+cbo_args = {"N": N, "m": m, "τ_k": τ_k, "η_k": η_k,
+            "β_k": β_k, "δ": δ, "early_stop": early_stop}
 # %%
 k_s = np.arange(early_stop)
 fig, axs = plt.subplots(figsize=(10, 5), ncols=3)
@@ -124,68 +145,19 @@ for i, (f, s) in enumerate(zip([η_k, τ_k, β_k], ["η_k", "τ_k", "β_k"])):
     axs[i].set_title(s)
 
 # %%
+
+
 def run_CBO_all():
-    Q_ctrl_UR_CBO, e_ctrl_UR_CBO = Q_CBO_gen(Q_ctrl_UR_CBO_L)(
-        S,
-        A_idx,
-        R,
-        a_s,
-        π,
-        σ,
-        ϵ,
-        new_Q_net=new_Q_net,
-        N=N,
-        m=m,
-        epochs=epochs,
-        τ_k=τ_k,
-        η_k=η_k,
-        β_k=β_k,
-        δ=δ,
-        Q_net_comp=Q_ctrl_UR_SGD_star,
-        early_stop=early_stop,
-    )
-    Q_ctrl_DS_CBO, e_ctrl_DS_CBO = Q_CBO_gen(Q_ctrl_DS_CBO_L)(
-        S,
-        A_idx,
-        R,
-        a_s,
-        π,
-        σ,
-        ϵ,
-        new_Q_net=new_Q_net,
-        N=N,
-        m=m,
-        epochs=epochs,
-        τ_k=τ_k,
-        η_k=η_k,
-        β_k=β_k,
-        δ=δ,
-        Q_net_comp=Q_ctrl_UR_SGD_star,
-        early_stop=early_stop,
-    )
-    Q_ctrl_BFF_CBO, e_ctrl_BFF_CBO = Q_CBO_gen(Q_ctrl_BFF_CBO_L)(
-        S,
-        A_idx,
-        R,
-        a_s,
-        π,
-        σ,
-        ϵ,
-        new_Q_net=new_Q_net,
-        N=N,
-        m=m,
-        epochs=epochs,
-        τ_k=τ_k,
-        η_k=η_k,
-        β_k=β_k,
-        δ=δ,
-        Q_net_comp=Q_ctrl_UR_SGD_star,
-        early_stop=early_stop,
-    )
-    return (
-        (Q_ctrl_UR_CBO, Q_ctrl_DS_CBO, Q_ctrl_BFF_CBO),
-        (e_ctrl_UR_CBO, e_ctrl_DS_CBO, e_ctrl_BFF_CBO),
-    )
+    cbo_u_s = [Q_ctrl_UR_CBO_L, Q_ctrl_DS_CBO_L, Q_ctrl_BFF_CBO_L]
+    Qs, es = [], []
+    for u_s in cbo_u_s:
+        q, e = Q_CBO_gen(u_s)(
+            *args_0, **common_args, **cbo_args)
+        Qs.append(q)
+        es.append(e)
+    return (Qs, es)
+
+
 # %%
 Q_s, e_s = run_CBO_all()
 lb_s = ["UR", "DS", "BFF"]
@@ -265,6 +237,6 @@ g.set_titles(col_template="{col_name}", row_template="{row_name}")
 plt.tight_layout()
 plt.subplots_adjust(right=0.9)
 g.add_legend(title="")
-plt.savefig("figs/Q_ctrl_SGD_vs_CBO_summary_ResNet_2.png")
+plt.savefig("figs/Q_ctrl_SGD_vs_CBO_summary_ResNet_3.png")
 
 # %%
