@@ -1,19 +1,29 @@
 # %%
 import torch
 from RL_Optimization import *
-from IPython import get_ipython
-import torch.nn as nn
-import pandas as pd
-import seaborn as sns
 import optuna
 import pickle
 # %%
-from continuous_example import *
-problem_suffix= "continuous"
-model_suffix = "resnet"
-def new_Q_net(): return Q_ResNet()
+# problem_suffix= "continuous"
+# model_suffix = "resnet"
+problem_suffix= "discrete"
+model_suffix = "tabular"
 # %%
-resample_save_policy(problem_suffix)
+if problem_suffix=="continuous":
+    from continuous_example import *
+    problem_params = get_parameters()
+    if model_suffix=="resnet":
+        def new_Q_net(): return Q_ResNet()
+    else:
+        def new_Q_net(): return Q_Net()
+else:
+    from discrete_example import *
+    problem_params = get_parameters()
+    n_a = problem_params["n_a"]
+    n_s = problem_params["n_s"]
+    def new_Q_net(): return Q_Tabular(n_a, n_s)
+# %%
+# resample_save_policy(problem_suffix)
 # %%
 S_long = torch.load(f"cache/S_long_{problem_suffix}.pt")
 R_long = torch.load(f"cache/R_long_{problem_suffix}.pt")
@@ -23,21 +33,22 @@ R = torch.load(f"cache/R_{problem_suffix}.pt")
 A_idx = torch.load(f"cache/A_idx_{problem_suffix}.pt")
 # %%
 sample = sampler()
-a_s = get_parameters()["a_s"]
+a_s = problem_params["a_s"]
+x_ls = problem_params["x_ls"]
 # %%
-def η_k(k): return max(0.1*0.9992**k, 0.075)
-def τ_k(k): return max(0.8*0.9992**k, 0.3)
-def β_k(k): return min(8*1.002**k,20)
-Q_ctrl_UR_SGD_star, _ = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-    S_long, A_idx_long, R_long, a_s, π, sample, M=1000, epochs=10, τ_k=lambda k:0.01
-)
-torch.save(Q_ctrl_UR_SGD_star, "cache/Q_ctrl_UR_SGD_star.pt")
-Q_ctrl_UR_SGD_star = torch.load("cache/Q_ctrl_UR_SGD_star.pt")
+# def η_k(k): return max(0.1*0.9992**k, 0.075)
+# def τ_k(k): return max(0.8*0.9992**k, 0.3)
+# def β_k(k): return min(8*1.002**k,20)
+# Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
+#     S_long, A_idx_long, R_long, a_s, π, sample, new_Q_net=new_Q_net, M=1000, epochs=1, τ_k=τ_k, x_ls=x_ls
+# )
+# torch.save(Q_ctrl_UR_SGD_star, f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
+Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 # %%
 M = 1000
 epochs = 1
 args_0 = [S, A_idx, R, a_s, π, sample]
-common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs}
+common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls}
 sgd_u_s = [Q_ctrl_UR_SGD_update_step, Q_ctrl_DS_SGD_update_step, Q_ctrl_BFF_SGD_update_step]
 which=[1,0,0]
 # %%
@@ -67,7 +78,7 @@ def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
         return min( β_i* β_r** k, β_f*β_i)
 
     cbo_args = {"N":N,"m":m,"τ_k":τ_k,"η_k":η_k,"β_k":β_k,"δ":δ,"early_stop":early_stop}
-    E = [Q_CBO_gen(u_s)(*args_0, **common_args, **cbo_args)[1] for i,u_s in enumerate(sgd_u_s) if which[i]]
+    E = [Q_CBO_gen(u_s)(*args_0, **common_args, **cbo_args)[1] for i,u_s in enumerate(cbo_u_s) if which[i]]
     return sum([np.log(e_s[-1] / e_s[0]) for e_s in E])/len(E)
 # %%
 def objective(trial):
@@ -77,7 +88,7 @@ def objective(trial):
     return run_SGD_all(τ_i,τ_f,τ_r)
 
 study = optuna.create_study(direction='minimize')
-study.optimize(objective, n_trials=15)
+study.optimize(objective, n_trials=5)
 # %%
 params = study.best_params
 pickle.dump( params, open( f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
@@ -99,7 +110,7 @@ def objective(trial):
     return run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r)
 
 study = optuna.create_study(direction='minimize')
-study.optimize(objective, n_trials=15)
+study.optimize(objective, n_trials=5)
 # %%
 params = study.best_params
 pickle.dump( params, open( f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
@@ -107,3 +118,5 @@ pickle.dump( params, open( f"cache/cbo_params_{problem_suffix}_{model_suffix}.p"
 optuna.visualization.plot_optimization_history(study)
 # %%
 optuna.visualization.plot_parallel_coordinate(study)
+
+# %%

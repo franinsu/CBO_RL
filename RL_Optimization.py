@@ -339,7 +339,6 @@ class Q_ResNet(Q_Net):
         x = self.fc3(x)
         return x
 
-
 class Q_Tabular(nn.Module):
     def __init__(self, n_a, n_s):
         super(Q_Tabular, self).__init__()

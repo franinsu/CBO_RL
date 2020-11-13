@@ -62,9 +62,9 @@ sgd_args = {"M": 1000, "τ_k": lambda k: 0.8*0.9999**k}
 cbo_args = {"N": 30, "m": 1000, "γ": 0.9, "δ": 1e-4,
             "τ_k": lambda k: 0.4*0.9995**k, "η_k": lambda k: 0.8, "β_k": lambda k: 12*1.001**k}
 # %%
-# Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-#     S_long, A_idx_long, R_long, a_s, π, sample, **common_args, **sgd_args
-# )
+Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
+    S_long, A_idx_long, R_long, a_s, π, sample, **common_args, **sgd_args
+)
 # %%
 # torch.save(Q_ctrl_UR_SGD_star, "cache/Q_ctrl_UR_SGD_star_tabular.pt")
 Q_ctrl_UR_SGD_star = torch.load("cache/Q_ctrl_UR_SGD_star_tabular.pt")
@@ -97,7 +97,7 @@ Q_dict = {
         ["C0", "C1", "C2"],
         ["solid", "solid"]
     ],
-    "BFF": [
+    "CBO": [
         [Q_ctrl_UR_CBO, Q_ctrl_DS_CBO, Q_ctrl_BFF_CBO],
         [e_ctrl_UR_CBO, e_ctrl_DS_CBO, e_ctrl_BFF_CBO],
         ["UR", "DS", "BFF"],

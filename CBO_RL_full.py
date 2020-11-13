@@ -902,7 +902,7 @@ def plotQ2(Q_dict, Q_star, lb_star):
         n = len(Q_s)
         y_s = torch.stack([Q(x_s.view(-1,1)) for Q in Q_s])
         y_s -= torch.unsqueeze(torch.mean(y_s - y_star,axis=1),1)
-        axr = axg[i] 
+        axr = axg[i]
         axr[0].annotate(plt_name, xy=(0, 0.5), xytext=(-axr[0].yaxis.labelpad - pad, 0),
                 xycoords=axr[0].yaxis.label, textcoords='offset points',
                 size=15, ha='right', va='center')
