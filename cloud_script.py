@@ -11,7 +11,7 @@ n_runs=int(n_runs)
 import torch
 from RL_Optimization import *
 import optuna
-import pickle
+import _pickle as pickle
 # %%
 if problem_suffix=="continuous":
     from continuous_example import *
