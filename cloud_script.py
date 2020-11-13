@@ -1,4 +1,4 @@
-# %%
+#!/usr/bin/env python3
 import sys
 import pandas as pd
 _, problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = sys.argv
@@ -107,10 +107,10 @@ params = study.best_params
 pickle.dump( params, open( f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
 # %%
 fig = optuna.visualization.plot_optimization_history(study)
-fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_history_{problem_suffix}_{model_suffix}.png")
+fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_history_{problem_suffix}_{model_suffix}.png", engine="kaleido")
 # %%
 fig = optuna.visualization.plot_parallel_coordinate(study)
-fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png")
+fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png", engine="kaleido")
 # %%
 def objective(trial):
     η_i = trial.suggest_float("η_i", 0., 1.)
@@ -131,10 +131,10 @@ params = study.best_params
 pickle.dump( params, open( f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
 # %%
 fig = optuna.visualization.plot_optimization_history(study)
-fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_history_{problem_suffix}_{model_suffix}.png")
+fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_history_{problem_suffix}_{model_suffix}.png", engine="kaleido")
 # %%
 fig = optuna.visualization.plot_parallel_coordinate(study)
-fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png")
+fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png", engine="kaleido")
 # %%
 print("\n\nAVERAGING RESULTS...\n")
 M = 1000
