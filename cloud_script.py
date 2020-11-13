@@ -1,8 +1,8 @@
 # %%
 import sys
 import pandas as pd
-# _, problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = sys.argv
-problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = "continuous", "resnet", False, False, 1, 1
+_, problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = sys.argv
+# problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = "continuous", "resnet", False, False, 1, 1
 resample=int(resample)
 reQ=int(reQ)
 n_trials=int(n_trials)
