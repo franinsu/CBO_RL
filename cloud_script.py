@@ -1,10 +1,12 @@
-
+# %%
 import sys
 import pandas as pd
-_, problem_suffix, model_suffix, resample, reQ, n_trials = sys.argv
+# _, problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = sys.argv
+problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = "continuous", "resnet", False, False, 1, 1
 resample=int(resample)
 reQ=int(reQ)
-n_trial=int(n_trials)
+n_trials=int(n_trials)
+n_runs=int(n_runs)
 # %%
 import torch
 from RL_Optimization import *
@@ -58,6 +60,12 @@ if reQ:
 Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 # %%
 print("\n\nHYPEROPT...\n")
+M = 1000
+epochs = 1
+args_0 = [S, A_idx, R, a_s, π, sample]
+common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls}
+sgd_u_s = [Q_ctrl_UR_SGD_update_step, Q_ctrl_DS_SGD_update_step, Q_ctrl_BFF_SGD_update_step]
+which=[1,0,0]
 def run_SGD_all(τ_i,τ_f,τ_r,):
     def τ_k(k):
         return max( τ_i* τ_r** k, τ_f*τ_i)
@@ -72,7 +80,6 @@ epochs = 1
 δ = 1e-5
 early_stop = 1000
 cbo_u_s = [Q_ctrl_UR_CBO_L, Q_ctrl_DS_CBO_L,Q_ctrl_BFF_CBO_L]
-# %%
 def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
     def η_k(k):
         return max( η_i* η_r** k, η_f*η_i)
@@ -99,11 +106,11 @@ study.optimize(objective, n_trials=n_trials)
 params = study.best_params
 pickle.dump( params, open( f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
 # %%
-optuna.visualization.plot_optimization_history(study)
-plt.savefig(f"figs/Q_ctrl_SGD_hyperopt_history_{problem_suffix}_{model_suffix}.png")
+fig = optuna.visualization.plot_optimization_history(study)
+fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_history_{problem_suffix}_{model_suffix}.png")
 # %%
-optuna.visualization.plot_parallel_coordinate(study)
-plt.savefig(f"figs/Q_ctrl_SGD_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png")
+fig = optuna.visualization.plot_parallel_coordinate(study)
+fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png")
 # %%
 def objective(trial):
     η_i = trial.suggest_float("η_i", 0., 1.)
@@ -123,11 +130,11 @@ study.optimize(objective, n_trials=n_trials)
 params = study.best_params
 pickle.dump( params, open( f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
 # %%
-optuna.visualization.plot_optimization_history(study)
-plt.savefig(f"figs/Q_ctrl_CBO_hyperopt_history_{problem_suffix}_{model_suffix}.png")
+fig = optuna.visualization.plot_optimization_history(study)
+fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_history_{problem_suffix}_{model_suffix}.png")
 # %%
-optuna.visualization.plot_parallel_coordinate(study)
-plt.savefig(f"figs/Q_ctrl_CBO_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png")
+fig = optuna.visualization.plot_parallel_coordinate(study)
+fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png")
 # %%
 print("\n\nAVERAGING RESULTS...\n")
 M = 1000
@@ -183,7 +190,6 @@ x_s = torch.linspace(0, 2 * np.pi, 100)
 y_star = Q_ctrl_UR_SGD_star(x_s.view(-1, 1))
 a_n = len(a_s)
 early_stop = 1000
-n_runs = 1
 for j, lb in enumerate(["UR", "DS", "BFF"]):
     for k in range(a_n):
         all_data = all_data.append(
