@@ -1,7 +1,7 @@
 
 import sys
 import pandas as pd
-problem_suffix, model_suffix, resample, reQ, n_trials = sys.argv
+_, problem_suffix, model_suffix, resample, reQ, n_trials = sys.argv
 resample=int(resample)
 reQ=int(reQ)
 n_trial=int(n_trials)
