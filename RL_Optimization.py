@@ -368,7 +368,7 @@ def Q_comp_0(Q_net, Q_net_comp, x_ls, n):
 
 
 def Q_SGD_gen(update_step):
-    def algo(S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1]):
+    def algo(S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], writer=None, main_tag = "", scalar_tag= ""):
         Q_net = new_Q_net()
         Rem = torch.tensor([])
         N = S.size()[0]
@@ -379,15 +379,18 @@ def Q_SGD_gen(update_step):
             e = [Q_comp(Q_net, Q_net_comp, x_ls, n)]
         for k in trange(epochs, leave=False, position=0, desc="Epoch"):
             B, Rem = gen_batches(N-2, M, Rem)
-            τ = τ_k(i)
-            i += 1
             for B_θ in tqdm(B, leave=False, position=0, desc="Batch"):
+                τ = τ_k(i)
+                i += 1
                 update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample)
                 with torch.no_grad():
                     for param in Q_net.parameters():
                         param -= τ/M*param.grad
                 if Q_net_comp:
-                    e.append(Q_comp(Q_net, Q_net_comp, x_ls, n))
+                    err = Q_comp(Q_net, Q_net_comp, x_ls, n)
+                    if writer:
+                        writer.add_scalars(main_tag,{scalar_tag:err},i)
+                    e.append(err)
         if Q_net_comp:
             return Q_net, torch.tensor(e)
         else:
@@ -502,7 +505,7 @@ def Q_CBO_gen(L_f):
     def algo(S, A_idx, R, a_s, π, sample,
              new_Q_net=lambda: Q_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
              τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, Q_net_comp=None,
-             x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], early_stop=None):
+             x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], early_stop=None, writer=None, main_tag="", scalar_tag=""):
         with torch.no_grad():
             Q_net = new_Q_net()
             Q_θ = [new_Q_net() for _ in range(N)]
@@ -545,7 +548,10 @@ def Q_CBO_gen(L_f):
                             for X_j in X_params:
                                 X_j += τ*np.sqrt(η)*torch.normal(z)
                     if Q_net_comp:
-                        e.append(Q_comp(Q_net, Q_net_comp, x_ls, n_comp))
+                        err = Q_comp(Q_net, Q_net_comp, x_ls, n)
+                        if writer:
+                            writer.add_scalars(main_tag,{scalar_tag:err},i)
+                        e.append(err)
             if Q_net_comp:
                 return Q_net, torch.tensor(e)
             else:
