@@ -26,8 +26,8 @@ else:
     n_s = problem_params["n_s"]
     def new_Q_net(): return Q_Tabular(n_a, n_s)
 # %%
-writer = SummaryWriter()
 import shutil; shutil.rmtree("runs")
+writer = SummaryWriter()
 if resample:
     print("\n\nRESAMPLING...\n")
     resample_save_policy(problem_suffix)
