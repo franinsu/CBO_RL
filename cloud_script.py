@@ -10,6 +10,7 @@ n_trials_cbo=int(n_trials_cbo)
 n_runs=int(n_runs)
 # %%
 import torch
+from torch.utils.tensorboard import SummaryWriter
 from RL_Optimization import *
 import optuna
 import _pickle as pickle
@@ -28,6 +29,7 @@ else:
     n_s = problem_params["n_s"]
     def new_Q_net(): return Q_Tabular(n_a, n_s)
 # %%
+writer = SummaryWriter()
 if resample:
     print("\n\nRESAMPLING...\n")
     resample_save_policy(problem_suffix)
@@ -49,7 +51,7 @@ if reQ:
     def τ_k(k): return max(0.8*0.9992**k, 0.3)
     def β_k(k): return min(8*1.002**k,20)
     Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-        S_long, A_idx_long, R_long, a_s, π, sample, new_Q_net=new_Q_net, M=1000, epochs=1, τ_k=τ_k, x_ls=x_ls
+        S_long, A_idx_long, R_long, a_s, π, sample, new_Q_net=new_Q_net, M=1000, epochs=1, τ_k=τ_k, x_ls=x_ls, writer=writer, main_tag="Q_star recomputation",scalar_tag="Q_star",
     )
     torch.save(Q_ctrl_UR_SGD_star, f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
     M = 1000
@@ -70,19 +72,26 @@ early_stop = 1000
 # %%
 print("\n\nHYPEROPT...\n")
 args_0 = [S, A_idx, R, a_s, π, sample]
-common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls}
-sgd_u_s = [Q_ctrl_UR_SGD_update_step, Q_ctrl_DS_SGD_update_step, Q_ctrl_BFF_SGD_update_step]
-which=[1,0,0]
+common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls, "writer":writer}
+sgd_u_s = {"UR":Q_ctrl_UR_SGD_update_step, "DS":Q_ctrl_DS_SGD_update_step, "SGD": Q_ctrl_BFF_SGD_update_step}
+which=set(["UR"])
+# %%
+n_trial = -1
 def run_SGD_all(τ_i,τ_f,τ_r,):
+    global n_trial
+    n_trial += 1
     def τ_k(k):
         return max( τ_i* τ_r** k, τ_f*τ_i)
     sgd_args = {"τ_k": τ_k,"M": M}
-    E = [Q_SGD_gen(u_s)(*args_0, **common_args, **sgd_args)[1] for i,u_s in enumerate(sgd_u_s) if which[i]]
+    E = [Q_SGD_gen(u_s)(*args_0, **common_args, **sgd_args, main_tag="HyperOpt SGD", scalar_tag=f"{s}_{n_trial}")[1] for s,u_s in sgd_u_s.items() if (s in which)]
     return sum([np.log(e_s[-1] / e_s[0]) for e_s in E])/len(E)
 
 # %%
-cbo_u_s = [Q_ctrl_UR_CBO_L, Q_ctrl_DS_CBO_L,Q_ctrl_BFF_CBO_L]
+cbo_u_s = {"UR": Q_ctrl_UR_CBO_L, "DS": Q_ctrl_DS_CBO_L,"CBO":Q_ctrl_BFF_CBO_L}
+n_trial = -1
 def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
+    global n_trial
+    n_trial += 1
     def η_k(k):
         return max( η_i* η_r** k, η_f*η_i)
 
@@ -93,7 +102,7 @@ def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
         return min( β_i* β_r** k, β_f*β_i)
 
     cbo_args = {"N":N,"m":m,"τ_k":τ_k,"η_k":η_k,"β_k":β_k,"δ":δ,"early_stop":early_stop}
-    E = [Q_CBO_gen(u_s)(*args_0, **common_args, **cbo_args)[1] for i,u_s in enumerate(cbo_u_s) if which[i]]
+    E = [Q_CBO_gen(u_s)(*args_0, **common_args, **cbo_args, main_tag="HyperOpt CBO", scalar_tag=f"{s}_{n_trial}")[1] for s,u_s in cbo_u_s.items() if (s in which)]
     return sum([np.log(e_s[-1] / e_s[0]) for e_s in E])/len(E)
 # %%
 def objective(trial):
@@ -258,4 +267,5 @@ plt.tight_layout()
 plt.subplots_adjust(right=0.9)
 g.add_legend(title="")
 plt.savefig(f"figs/Q_ctrl_SGD_vs_CBO_summary_{problem_suffix}_{model_suffix}.png")
+writer.close()
 # %%
