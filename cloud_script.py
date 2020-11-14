@@ -26,7 +26,6 @@ else:
     n_s = problem_params["n_s"]
     def new_Q_net(): return Q_Tabular(n_a, n_s)
 # %%
-import shutil; shutil.rmtree("runs")
 writer = SummaryWriter()
 if resample:
     print("\n\nRESAMPLING...\n")
@@ -52,12 +51,6 @@ if reQ:
         S_long, A_idx_long, R_long, a_s, π, sample, new_Q_net=new_Q_net, M=1000, epochs=1, τ_k=τ_k, x_ls=x_ls, writer=writer, main_tag="Q_star recomputation",scalar_tag="Q_star",
     )
     torch.save(Q_ctrl_UR_SGD_star, f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
-    M = 1000
-    epochs = 1
-    args_0 = [S, A_idx, R, a_s, π, sample]
-    common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls}
-    sgd_u_s = [Q_ctrl_UR_SGD_update_step, Q_ctrl_DS_SGD_update_step, Q_ctrl_BFF_SGD_update_step]
-    which=[1,0,0]
 Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 # %%
 M = 1000
@@ -230,7 +223,7 @@ for n_run in range(n_runs):
                     {
                         "i": n_run,
                         "x": np.arange(len(e_s[j])),
-                        "y": e_s[j] / e_s[j][-1],
+                        "y": e_s[j] / e_s[j][0],
                         "sampling": lb,
                         "algo": algo,
                         "plot": r"$e_k/e_0$",
