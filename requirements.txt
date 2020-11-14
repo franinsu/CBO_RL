@@ -6,12 +6,6 @@ orca
 pandas
 tqdm
 optuna
-<<<<<<< HEAD
 plotly==4.12.0
 kaleido
 psutil
-=======
-plotly=4.12.0
-psutil
-kaleido
->>>>>>> 955050ab8805b78b99af36b2c0945d9e35f2d11f
