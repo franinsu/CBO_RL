@@ -379,9 +379,9 @@ def Q_SGD_gen(update_step):
             e = [Q_comp(Q_net, Q_net_comp, x_ls, n)]
         for k in trange(epochs, leave=False, position=0, desc="Epoch"):
             B, Rem = gen_batches(N-2, M, Rem)
-            τ = τ_k(i)
-            i += 1
             for B_θ in tqdm(B, leave=False, position=0, desc="Batch"):
+                τ = τ_k(i)
+                i += 1
                 update_step(Q_net, γ, τ, S, A_idx, R, a_s, B_θ, M, π, sample)
                 with torch.no_grad():
                     for param in Q_net.parameters():
