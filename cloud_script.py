@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 import sys
 import pandas as pd
-_, problem_suffix, model_suffix, resample, reQ, n_trials_sgd, n_trials_cbo,  n_runs = sys.argv
+_, problem_suffix, model_suffix, resample, reQ, n_trials_sgd, n_trials_cbo,  n_runs, N = sys.argv
 # problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = "continuous", "resnet", False, False, 1, 1
-resample=int(resample)
-reQ=int(reQ)
-n_trials_sgd=int(n_trials_sgd)
-n_trials_cbo=int(n_trials_cbo)
-n_runs=int(n_runs)
+for x in [resample, reQ, n_trials_sgd, n_trials_cbo, n_runs, N]:
+    x = int(x)
 # %%
 import torch
 from RL_Optimization import *
@@ -62,7 +59,6 @@ Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{mod
 # %%
 M = 1000
 epochs = 1
-N = 30
 m = 1000
 epochs = 1
 δ = 1e-5
