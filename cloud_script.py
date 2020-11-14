@@ -30,6 +30,7 @@ else:
     def new_Q_net(): return Q_Tabular(n_a, n_s)
 # %%
 writer = SummaryWriter()
+import shutil; shutil.rmtree("runs")
 if resample:
     print("\n\nRESAMPLING...\n")
     resample_save_policy(problem_suffix)
@@ -160,12 +161,11 @@ def τ_k(k):
 sgd_args = {"τ_k": τ_k, "M": M}
 # %%
 def run_SGD_all():
-    sgd_u_s = [Q_ctrl_UR_SGD_update_step,
-               Q_ctrl_DS_SGD_update_step, Q_ctrl_BFF_SGD_update_step]
+    global n_run
     Qs, es = [], []
-    for u_s in sgd_u_s:
+    for s,u_s in sgd_u_s.items():
         q, e = Q_SGD_gen(u_s)(
-            *args_0, **common_args, **sgd_args)
+            *args_0, **common_args, **sgd_args,main_tag="Averaging SGD", scalar_tag=f"{s}_{n_run}")
         Qs.append(q)
         es.append(e)
     return (Qs, es)
@@ -183,13 +183,12 @@ def β_k(k): return min(β_i * β_r ** k, β_f*β_i)
 cbo_args = {"N": N, "m": m, "τ_k": τ_k, "η_k": η_k,
             "β_k": β_k, "δ": δ, "early_stop": early_stop}
 # %%
-
 def run_CBO_all():
-    cbo_u_s = [Q_ctrl_UR_CBO_L, Q_ctrl_DS_CBO_L, Q_ctrl_BFF_CBO_L]
+    global n_run
     Qs, es = [], []
-    for u_s in cbo_u_s:
+    for s, u_s in cbo_u_s.items():
         q, e = Q_CBO_gen(u_s)(
-            *args_0, **common_args, **cbo_args)
+            *args_0, **common_args, **cbo_args,main_tag="Averaging CBO", scalar_tag=f"{s}_{n_run}")
         Qs.append(q)
         es.append(e)
     return (Qs, es)
@@ -211,7 +210,7 @@ for j, lb in enumerate(["UR", "DS", "BFF"]):
                 }
             )
         )
-for i in range(n_runs):
+for n_run in range(n_runs):
     for r, algo in [(run_SGD_all, "SGD"), (run_CBO_all, "CBO")]:
         Q_s, e_s = r()
         y_s = torch.stack([Q(x_ls.view(-1, 1)) for Q in Q_s])
@@ -221,7 +220,7 @@ for i in range(n_runs):
                 all_data = all_data.append(
                     pd.DataFrame(
                         {
-                            "i": i,
+                            "i": n_run,
                             "x": x_ls.detach().numpy(),
                             "y": y_s[j, :, k].detach().numpy(),
                             "sampling": lb,
@@ -233,7 +232,7 @@ for i in range(n_runs):
             all_data = all_data.append(
                 pd.DataFrame(
                     {
-                        "i": i,
+                        "i": n_run,
                         "x": np.arange(len(e_s[j])),
                         "y": e_s[j] / e_s[j][-1],
                         "sampling": lb,
