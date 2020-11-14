@@ -186,8 +186,7 @@ def run_CBO_all():
     return (Qs, es)
 # %%
 all_data = pd.DataFrame(columns=["i", "x", "y", "sampling", "algo", "plot"])
-x_s = torch.linspace(0, 2 * np.pi, 100)
-y_star = Q_ctrl_UR_SGD_star(x_s.view(-1, 1))
+y_star = Q_ctrl_UR_SGD_star(x_ls.view(-1, 1))
 a_n = len(a_s)
 for j, lb in enumerate(["UR", "DS", "BFF"]):
     for k in range(a_n):
@@ -195,7 +194,7 @@ for j, lb in enumerate(["UR", "DS", "BFF"]):
             pd.DataFrame(
                 {
                     "i": 0,
-                    "x": x_s.detach().numpy(),
+                    "x": x_ls.detach().numpy(),
                     "y": y_star[:, k].detach().numpy(),
                     "sampling": lb,
                     "algo": "UR SGD *",
@@ -206,7 +205,7 @@ for j, lb in enumerate(["UR", "DS", "BFF"]):
 for i in range(n_runs):
     for r, algo in [(run_SGD_all, "SGD"), (run_CBO_all, "CBO")]:
         Q_s, e_s = r()
-        y_s = torch.stack([Q(x_s.view(-1, 1)) for Q in Q_s])
+        y_s = torch.stack([Q(x_ls.view(-1, 1)) for Q in Q_s])
         y_s -= torch.unsqueeze(torch.mean(y_s - y_star, axis=1), 1)
         for j, lb in enumerate(["UR", "DS", "BFF"]):
             for k in range(a_n):
@@ -214,7 +213,7 @@ for i in range(n_runs):
                     pd.DataFrame(
                         {
                             "i": i,
-                            "x": x_s.detach().numpy(),
+                            "x": x_ls.detach().numpy(),
                             "y": y_s[j, :, k].detach().numpy(),
                             "sampling": lb,
                             "algo": algo,
@@ -227,7 +226,7 @@ for i in range(n_runs):
                     {
                         "i": i,
                         "x": np.arange(len(e_s[j])),
-                        "y": e_s[j] / e_s[j][0],
+                        "y": e_s[j] / e_s[j][-1],
                         "sampling": lb,
                         "algo": algo,
                         "plot": r"$e_k/e_0$",
