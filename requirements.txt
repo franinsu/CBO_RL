@@ -1,0 +1,10 @@
+seaborn
+numpy
+torch
+matplotlib
+orca
+pandas
+tqdm
+optuna
+plotly=4.12.0
+psutil
