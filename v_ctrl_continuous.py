@@ -5,10 +5,8 @@ import pandas as pd
 import seaborn as sns
 import pickle
 # %%
-# problem_suffix= "continuous"
-# model_suffix = "resnet"
-problem_suffix= "discrete"
-model_suffix = "tabular"
+problem_suffix= "continuous"
+model_suffix = "resnet"
 # %%
 if problem_suffix=="continuous":
     from continuous_example import *
@@ -37,8 +35,7 @@ Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{mod
 # %%
 common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls}
 # %%
-params = pickle.load(open(f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "rb"))
-τ_i, τ_f, τ_r = [params[x] for x in ['τ_i', 'τ_f', 'τ_f']]
+τ_i, τ_f, τ_r = 0.5, 0.075, 0.9992
 
 def τ_k(k):
     return max(τ_i * τ_r ** k, τ_f*τ_i)
@@ -57,10 +54,8 @@ def run_SGD_all():
     return (Qs, es)
 
 # %%
-params = pickle.load(open(f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "rb"))
-η_i, η_f, η_r, τ_i, τ_f, τ_r, β_i, β_f, β_r = [params[x] for x in [
-    'η_i', 'η_f', 'η_r', 'τ_i', 'τ_f', 'τ_r', 'β_i', 'β_f', 'β_r']]
-N = 30
+η_i, η_f, η_r, τ_i, τ_f, τ_r, β_i, β_f, β_r = 0.1,0.075,0.9992, 0.7, 0.2, 0.9992, 8, 20, 1.002
+N = 90
 m = 1000
 δ = 1e-5
 early_stop = 1000

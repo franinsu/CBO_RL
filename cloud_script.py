@@ -60,9 +60,15 @@ if reQ:
     which=[1,0,0]
 Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 # %%
-print("\n\nHYPEROPT...\n")
 M = 1000
 epochs = 1
+N = 30
+m = 1000
+epochs = 1
+δ = 1e-5
+early_stop = 1000
+# %%
+print("\n\nHYPEROPT...\n")
 args_0 = [S, A_idx, R, a_s, π, sample]
 common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls}
 sgd_u_s = [Q_ctrl_UR_SGD_update_step, Q_ctrl_DS_SGD_update_step, Q_ctrl_BFF_SGD_update_step]
@@ -75,11 +81,6 @@ def run_SGD_all(τ_i,τ_f,τ_r,):
     return sum([np.log(e_s[-1] / e_s[0]) for e_s in E])/len(E)
 
 # %%
-N = 30
-m = 1000
-epochs = 1
-δ = 1e-5
-early_stop = 1000
 cbo_u_s = [Q_ctrl_UR_CBO_L, Q_ctrl_DS_CBO_L,Q_ctrl_BFF_CBO_L]
 def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
     def η_k(k):
@@ -141,8 +142,6 @@ if n_trials_cbo>0:
 
 # %%
 print("\n\nAVERAGING RESULTS...\n")
-M = 1000
-epochs = 1
 params = pickle.load(open(f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "rb"))
 τ_i, τ_f, τ_r = [params[x] for x in ['τ_i', 'τ_f', 'τ_f']]
 
@@ -166,9 +165,6 @@ def run_SGD_all():
 params = pickle.load(open(f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "rb"))
 η_i, η_f, η_r, τ_i, τ_f, τ_r, β_i, β_f, β_r = [params[x] for x in [
     'η_i', 'η_f', 'η_r', 'τ_i', 'τ_f', 'τ_r', 'β_i', 'β_f', 'β_r']]
-N = 90
-m = 1000
-δ = 1e-0
 early_stop = 1000
 def η_k(k): return max(η_i * η_r ** k, η_f*η_i)
 def τ_k(k): return max(τ_i * τ_r ** k, τ_f*τ_i)
@@ -193,7 +189,6 @@ all_data = pd.DataFrame(columns=["i", "x", "y", "sampling", "algo", "plot"])
 x_s = torch.linspace(0, 2 * np.pi, 100)
 y_star = Q_ctrl_UR_SGD_star(x_s.view(-1, 1))
 a_n = len(a_s)
-early_stop = 1000
 for j, lb in enumerate(["UR", "DS", "BFF"]):
     for k in range(a_n):
         all_data = all_data.append(
