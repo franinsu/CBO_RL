@@ -370,6 +370,8 @@ def Q_comp_0(Q_net, Q_net_comp, x_ls, n):
 def Q_SGD_gen(update_step):
     def algo(S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], writer=None, main_tag = "", scalar_tag= ""):
         Q_net = new_Q_net()
+        if main_tag and scalar_tag:
+            print(f"Fitting {main_tag}, {scalar_tag}")
         Rem = torch.tensor([])
         N = S.size()[0]
         i = 0
@@ -508,6 +510,8 @@ def Q_CBO_gen(L_f):
              x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], early_stop=None, writer=None, main_tag="", scalar_tag=""):
         with torch.no_grad():
             Q_net = new_Q_net()
+            if main_tag and scalar_tag:
+                print(f"Fitting {main_tag}, {scalar_tag}")
             Q_θ = [new_Q_net() for _ in range(N)]
             rem = torch.tensor([])
             L = torch.empty(N)
