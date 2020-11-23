@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import sys
 import pandas as pd
-_, problem_suffix, model_suffix, resample, reQ, landscape, n_trials_sgd, n_trials_cbo,  n_runs, N = sys.argv
-for x in [resample, reQ, landscape, n_trials_sgd, n_trials_cbo, n_runs, N]:
-    x = int(x)
+_, problem_suffix, model_suffix= sys.argv[:3]
+resample, reQ, landscape, n_trials_sgd, n_trials_cbo, n_runs, N = [int(a) for a in sys.argv[3:]]
 # %%
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -25,6 +24,7 @@ else:
     n_s = problem_params["n_s"]
     def new_Q_net(): return Q_Tabular(n_a, n_s)
 # %%
+# import shutil; shutil.rmtree("runs")
 writer = SummaryWriter()
 if resample:
     print("\n\nRESAMPLING...\n")
@@ -43,11 +43,9 @@ x_ls = problem_params["x_ls"]
 # %%
 if reQ:
     print("\n\nRECOMPUTING Q_STAR...\n")
-    def η_k(k): return max(0.1*0.9992**k, 0.075)
     def τ_k(k): return max(0.8*0.9992**k, 0.3)
-    def β_k(k): return min(8*1.002**k,20)
     Q_ctrl_UR_SGD_star = Q_SGD_gen(Q_ctrl_UR_SGD_update_step)(
-        S_long, A_idx_long, R_long, a_s, π, sample, new_Q_net=new_Q_net, M=1000, epochs=1, τ_k=τ_k, x_ls=x_ls, writer=writer, main_tag="Q_star recomputation",scalar_tag="Q_star",
+        S_long, A_idx_long, R_long, a_s, π, sample, new_Q_net=new_Q_net, M=1000, epochs=1, τ_k=τ_k, x_ls=x_ls, writer=writer, main_tag=f"Q_star recomputation {problem_suffix} {model_suffix}",scalar_tag="Q_star",
     )
     torch.save(Q_ctrl_UR_SGD_star, f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
@@ -55,14 +53,13 @@ Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{mod
 M = 1000
 epochs = 1
 m = 1000
-epochs = 1
 δ = 1e-5
 early_stop = 1000
 # %%
 print("\n\nHYPEROPT...\n")
 args_0 = [S, A_idx, R, a_s, π, sample]
 common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epochs": epochs, "x_ls": x_ls, "writer":writer}
-sgd_u_s = {"UR":Q_ctrl_UR_SGD_update_step, "DS":Q_ctrl_DS_SGD_update_step, "SGD": Q_ctrl_BFF_SGD_update_step}
+sgd_u_s = {"UR":Q_ctrl_UR_SGD_update_step, "DS":Q_ctrl_DS_SGD_update_step, "BFF": Q_ctrl_BFF_SGD_update_step}
 which=set(["UR"])
 # %%
 n_trial = -1
@@ -72,11 +69,11 @@ def run_SGD_all(τ_i,τ_f,τ_r,):
     def τ_k(k):
         return max( τ_i* τ_r** k, τ_f*τ_i)
     sgd_args = {"τ_k": τ_k,"M": M}
-    E = [Q_SGD_gen(u_s)(*args_0, **common_args, **sgd_args, main_tag="HyperOpt SGD", scalar_tag=f"{s}_{n_trial}")[1] for s,u_s in sgd_u_s.items() if (s in which)]
-    return sum([np.log(e_s[-1] / e_s[0]) for e_s in E])/len(E)
+    E = [Q_SGD_gen(u_s)(*args_0, **common_args, **sgd_args, main_tag=f"HyperOpt SGD {problem_suffix} {model_suffix}", scalar_tag=f"{s}_{n_trial}")[1] for s,u_s in sgd_u_s.items() if (s in which)]
+    return sum([np.log(e_s[-1]) for e_s in E])/len(E)
 
 # %%
-cbo_u_s = {"UR": Q_ctrl_UR_CBO_L, "DS": Q_ctrl_DS_CBO_L,"CBO":Q_ctrl_BFF_CBO_L}
+cbo_u_s = {"UR": Q_ctrl_UR_CBO_L, "DS": Q_ctrl_DS_CBO_L,"BFF":Q_ctrl_BFF_CBO_L}
 n_trial = -1
 def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
     global n_trial
@@ -91,13 +88,13 @@ def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
         return min( β_i* β_r** k, β_f*β_i)
 
     cbo_args = {"N":N,"m":m,"τ_k":τ_k,"η_k":η_k,"β_k":β_k,"δ":δ,"early_stop":early_stop}
-    E = [Q_CBO_gen(u_s)(*args_0, **common_args, **cbo_args, main_tag="HyperOpt CBO", scalar_tag=f"{s}_{n_trial}")[1] for s,u_s in cbo_u_s.items() if (s in which)]
-    return sum([np.log(e_s[-1] / e_s[0]) for e_s in E])/len(E)
+    E = [Q_CBO_gen(u_s)(*args_0, **common_args, **cbo_args, main_tag=f"HyperOpt CBO {problem_suffix} {model_suffix}", scalar_tag=f"{s}_{n_trial}")[1] for s,u_s in cbo_u_s.items() if (s in which)]
+    return sum([np.log(e_s[-1]) for e_s in E])/len(E)
 # %%
 def objective(trial):
     τ_i = trial.suggest_float("τ_i", 0., 1.)
     τ_f = trial.suggest_float("τ_f", 0., 1.)
-    τ_r = trial.suggest_float("τ_r", 0.9, 1.)
+    τ_r = trial.suggest_float("τ_r", 0.95, 1.)
     return run_SGD_all(τ_i,τ_f,τ_r)
 
 if n_trials_sgd > 0:
@@ -120,9 +117,9 @@ def objective(trial):
     τ_i = trial.suggest_float("τ_i", 0., 1.)
     τ_f = trial.suggest_float("τ_f", 0., 1.)
     τ_r = trial.suggest_float("τ_r", 0.9, 1.)
-    β_i = trial.suggest_float("β_i", 0., 1.)
-    β_f = trial.suggest_float("β_f", 0., 1.)
-    β_r = trial.suggest_float("β_r", 0.9, 1.)
+    β_i = trial.suggest_float("β_i", 5., 15.)
+    β_f = trial.suggest_float("β_f", 1., 3.)
+    β_r = trial.suggest_float("β_r", 1., 1.05)
     return run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r)
 
 if n_trials_cbo>0:
@@ -153,7 +150,7 @@ def run_SGD_all():
     Qs, es = [], []
     for s,u_s in sgd_u_s.items():
         q, e = Q_SGD_gen(u_s)(
-            *args_0, **common_args, **sgd_args,main_tag="Averaging SGD", scalar_tag=f"{s}_{n_run}")
+            *args_0, **common_args, **sgd_args,main_tag=f"Averaging SGD {problem_suffix} {model_suffix}", scalar_tag=f"{s}_{n_run}")
         Qs.append(q)
         es.append(e)
     return (Qs, es)
@@ -176,7 +173,7 @@ def run_CBO_all():
     Qs, es = [], []
     for s, u_s in cbo_u_s.items():
         q, e = Q_CBO_gen(u_s)(
-            *args_0, **common_args, **cbo_args,main_tag="Averaging CBO", scalar_tag=f"{s}_{n_run}")
+            *args_0, **common_args, **cbo_args,main_tag=f"Averaging CBO {problem_suffix} {model_suffix}", scalar_tag=f"{s}_{n_run}")
         Qs.append(q)
         es.append(e)
     return (Qs, es)
