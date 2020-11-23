@@ -2,7 +2,7 @@
 import sys
 import pandas as pd
 _, problem_suffix, model_suffix= sys.argv[:3]
-resample, reQ, landscape, n_trials_sgd, n_trials_cbo, n_runs, N = [int(a) for a in sys.argv[3:]]
+resample, reQ, landscape, cuda, n_trials_sgd, n_trials_cbo, n_runs, N = [int(a) for a in sys.argv[3:]]
 # %%
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -14,9 +14,15 @@ if problem_suffix=="continuous":
     from continuous_example import *
     problem_params = get_parameters()
     if model_suffix=="resnet":
-        def new_Q_net(): return Q_ResNet()
+        if cuda:
+            def new_Q_net(): return Q_ResNet().cuda()
+        else:
+            def new_Q_net(): return Q_ResNet()
     else:
-        def new_Q_net(): return Q_Net()
+        if cuda:
+            def new_Q_net(): return Q_Net().cuda()
+        else:
+            def new_Q_net(): return Q_Net()
 else:
     from discrete_example import *
     problem_params = get_parameters()
