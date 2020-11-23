@@ -68,7 +68,6 @@ common_args = {"new_Q_net": new_Q_net, "Q_net_comp": Q_ctrl_UR_SGD_star,  "epoch
 sgd_u_s = {"UR":Q_ctrl_UR_SGD_update_step, "DS":Q_ctrl_DS_SGD_update_step, "BFF": Q_ctrl_BFF_SGD_update_step}
 which=set(["UR"])
 # %%
-n_trial = -1
 def run_SGD_all(τ_i,τ_f,τ_r,):
     global n_trial
     n_trial += 1
@@ -80,7 +79,6 @@ def run_SGD_all(τ_i,τ_f,τ_r,):
 
 # %%
 cbo_u_s = {"UR": Q_ctrl_UR_CBO_L, "DS": Q_ctrl_DS_CBO_L,"BFF":Q_ctrl_BFF_CBO_L}
-n_trial = -1
 def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
     global n_trial
     n_trial += 1
@@ -104,6 +102,7 @@ def objective(trial):
     return run_SGD_all(τ_i,τ_f,τ_r)
 
 if n_trials_sgd > 0:
+    n_trial = -1
     study = optuna.create_study(direction='minimize')
     study.optimize(objective, n_trials=n_trials_sgd)
     # %%
@@ -129,6 +128,7 @@ def objective(trial):
     return run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r)
 
 if n_trials_cbo>0:
+    n_trial = -1
     study = optuna.create_study(direction='minimize')
     study.optimize(objective, n_trials=n_trials_cbo)
     # %%
