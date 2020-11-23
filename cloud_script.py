@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import sys
 import pandas as pd
-_, problem_suffix, model_suffix, resample, reQ, n_trials_sgd, n_trials_cbo,  n_runs, N = sys.argv
-# problem_suffix, model_suffix, resample, reQ, n_trials, n_runs = "continuous", "resnet", False, False, 1, 1
-for x in [resample, reQ, n_trials_sgd, n_trials_cbo, n_runs, N]:
+_, problem_suffix, model_suffix, resample, reQ, landscape, n_trials_sgd, n_trials_cbo,  n_runs, N = sys.argv
+for x in [resample, reQ, landscape, n_trials_sgd, n_trials_cbo, n_runs, N]:
     x = int(x)
 # %%
 import torch
@@ -254,5 +253,36 @@ plt.tight_layout()
 plt.subplots_adjust(right=0.9)
 g.add_legend(title="")
 plt.savefig(f"figs/Q_ctrl_SGD_vs_CBO_summary_{problem_suffix}_{model_suffix}.png")
-writer.close()
 # %%
+if landscape:
+    all_data = pd.DataFrame(columns=["i", "x", "y", "problem", "model"])
+    Q_net_comp = common_args["Q_net_comp"]
+    n = len(x_ls)
+    N = int(1e2)
+    δα = 1./N
+    α_ls = np.linspace(0, 1, N)
+    n_runs = 100
+    for i in range(n_runs):
+        Q_net, Q_net_0 = new_Q_net(), new_Q_net()
+        e = []
+        for α in α_ls:
+            with torch.no_grad():
+                for param, param_i, param_f in zip(Q_net.parameters(), Q_net_0.parameters(), Q_net_comp.parameters()):
+                    param = α * param_f + (1-α) * param_i
+            e.append(Q_comp(Q_net, Q_net_comp, x_ls, n).detach().numpy().item())
+        all_data = all_data.append(
+            pd.DataFrame(
+                {
+                    "i": i,
+                    "x": α_ls,
+                    "y": e,
+                    "problem": problem_suffix,
+                    "model": model_suffix
+                }
+            )
+        )
+    fig = sns.lineplot(data=all_data, x="x", y="y", units="i",
+                alpha=0.7, hue="problem", estimator=None)
+    fig.write_image(f"figs/Q_ctrl_landscape_plot_{problem_suffix}_{model_suffix}.png", engine="kaleido")
+# %%
+writer.close()
