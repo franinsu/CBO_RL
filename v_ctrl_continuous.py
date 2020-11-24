@@ -59,6 +59,7 @@ N = 90
 m = 1000
 δ = 1e-5
 early_stop = 1000
+#%%
 def η_k(k): return max(η_i * η_r ** k, η_f*η_i)
 def τ_k(k): return max(τ_i * τ_r ** k, τ_f*τ_i)
 def β_k(k): return min(β_i * β_r ** k, β_f*β_i)
@@ -67,6 +68,8 @@ def β_k(k): return min(β_i * β_r ** k, β_f*β_i)
 cbo_args = {"N": N, "m": m, "τ_k": τ_k, "η_k": η_k,
             "β_k": β_k, "δ": δ, "early_stop": early_stop}
 # %%
+q,e = Q_CBO_gen(Q_ctrl_UR_CBO_L)(*args_0, **common_args, **cbo_args)
+#%%
 
 def run_CBO_all():
     cbo_u_s = [Q_ctrl_UR_CBO_L, Q_ctrl_DS_CBO_L, Q_ctrl_BFF_CBO_L]

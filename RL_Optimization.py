@@ -552,8 +552,8 @@ def Q_CBO_gen(L_f):
                             for X_j in X_params:
                                 X_j += τ*np.sqrt(η)*torch.normal(z)
                     if Q_net_comp:
-                        err = Q_comp(Q_net, Q_net_comp, x_ls, n)
-                        if err == torch.tensor(float("NaN")):
+                        err = Q_comp(Q_net, Q_net_comp, x_ls, n_comp)
+                        if torch.isnan(err):
                             err = float("inf")
                             e.append(err)
                             return Q_net, torch.tensor(e)
