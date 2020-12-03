@@ -96,7 +96,7 @@ def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
     return sum([np.log(e_s[-1]) for e_s in E])/len(E)
 # %%
 def objective(trial):
-    τ_i = trial.suggest_float("τ_i", 0., 4.)
+    τ_i = trial.suggest_float("τ_i", 0., 5.)
     τ_f = trial.suggest_float("τ_f", 0., 1.)
     τ_r = trial.suggest_float("τ_r", 0.95, 1.)
     return run_SGD_all(τ_i,τ_f,τ_r)
@@ -118,10 +118,10 @@ if n_trials_sgd > 0:
 def objective(trial):
     η_i = trial.suggest_float("η_i", 0., 1.)
     η_f = trial.suggest_float("η_f", 0., 1.)
-    η_r = trial.suggest_float("η_r", 0.9, 1.)
-    τ_i = trial.suggest_float("τ_i", 0., 4.)
+    η_r = trial.suggest_float("η_r", 0.95, 1.)
+    τ_i = trial.suggest_float("τ_i", 0., 3.)
     τ_f = trial.suggest_float("τ_f", 0., 1.)
-    τ_r = trial.suggest_float("τ_r", 0.9, 1.)
+    τ_r = trial.suggest_float("τ_r", 0.95, 1.)
     β_i = trial.suggest_float("β_i", 5., 15.)
     β_f = trial.suggest_float("β_f", 1., 3.)
     β_r = trial.suggest_float("β_r", 1., 1.05)
@@ -144,6 +144,7 @@ if n_trials_cbo>0:
 # %%
 print("\n\nAVERAGING RESULTS...\n")
 if average:
+    common_args["epochs"]=2
     params = pickle.load(open(f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "rb"))
     τ_i, τ_f, τ_r = [params[x] for x in ['τ_i', 'τ_f', 'τ_f']]
     
@@ -166,7 +167,7 @@ if average:
     params = pickle.load(open(f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "rb"))
     η_i, η_f, η_r, τ_i, τ_f, τ_r, β_i, β_f, β_r = [params[x] for x in [
         'η_i', 'η_f', 'η_r', 'τ_i', 'τ_f', 'τ_r', 'β_i', 'β_f', 'β_r']]
-    early_stop = 1000
+    early_stop = 2000
     def η_k(k): return max(η_i * η_r ** k, η_f*η_i)
     def τ_k(k): return max(τ_i * τ_r ** k, τ_f*τ_i)
     def β_k(k): return min(β_i * β_r ** k, β_f*β_i)
@@ -250,6 +251,7 @@ if average:
     for ax in g.axes[:, 2]:
         ax.set_yscale("log")
     g.axes[-1, -1].set_xlabel(f"$k$")
+    [ax.set_ylim(None, 1) for ax in g.axes[:,-1]]
     [plt.setp(ax.texts, text="") for ax in g.axes.flat]
     g.set_ylabels("")
     g.set_titles(col_template="{col_name}", row_template="{row_name}")

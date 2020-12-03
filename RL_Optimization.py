@@ -554,8 +554,9 @@ def Q_CBO_gen(L_f):
                     if Q_net_comp:
                         err = Q_comp(Q_net, Q_net_comp, x_ls, n_comp)
                         if torch.isnan(err):
-                            e.append(1e20)
-                            return Q_net, torch.tensor(e)
+                            # e.append(float('nan'))
+                            e.append(1e23)
+                            return Q_net, e
                         if writer:
                             writer.add_scalars(main_tag,{scalar_tag:err},i)
                         e.append(err)
