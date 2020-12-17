@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+# %%
 import sys
 import pandas as pd
-_, problem_suffix, model_suffix= sys.argv[:3]
-resample, reQ, average, landscape,  cuda, n_trials_sgd, n_trials_cbo, n_runs, N = [int(a) for a in sys.argv[3:]]
+args = sys.argv
+# args = "script discrete tabular 0 0 1 0 0 0 0 5 90".split(" ")
+_, problem_suffix, model_suffix= args[:3]
+resample, reQ, average, landscape,  cuda, n_trials_sgd, n_trials_cbo, n_runs, N = [int(a) for a in args[3:]]
 # %%
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -56,11 +59,9 @@ if reQ:
     torch.save(Q_ctrl_UR_SGD_star, f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 # %%
-M = 1000
-epochs = 1
-m = 1000
+M = m = 1000
+epochs = 2
 δ = 1e-5
-early_stop = 1000
 # %%
 print("\n\nHYPEROPT...\n")
 args_0 = [S, A_idx, R, a_s, π, sample]
@@ -91,7 +92,7 @@ def run_CBO_all(η_i,η_f,η_r,τ_i,τ_f,τ_r,β_i,β_f,β_r):
     def β_k(k):
         return min( β_i* β_r** k, β_f*β_i)
 
-    cbo_args = {"N":N,"m":m,"τ_k":τ_k,"η_k":η_k,"β_k":β_k,"δ":δ,"early_stop":early_stop}
+    cbo_args = {"N":N,"m":m,"τ_k":τ_k,"η_k":η_k,"β_k":β_k,"δ":δ}
     E = [Q_CBO_gen(u_s)(*args_0, **common_args, **cbo_args, main_tag=f"HyperOpt CBO {problem_suffix} {model_suffix}", scalar_tag=f"{s}_{n_trial}")[1] for s,u_s in cbo_u_s.items() if (s in which)]
     return sum([np.log(e_s[-1]) for e_s in E])/len(E)
 # %%
@@ -105,13 +106,10 @@ if n_trials_sgd > 0:
     n_trial = -1
     study = optuna.create_study(direction='minimize')
     study.optimize(objective, n_trials=n_trials_sgd)
-    # %%
     params = study.best_params
     pickle.dump( params, open( f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
-    # %%
     fig = optuna.visualization.plot_optimization_history(study)
     fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_history_{problem_suffix}_{model_suffix}.png", engine="kaleido")
-    # %%
     fig = optuna.visualization.plot_parallel_coordinate(study)
     fig.write_image(f"figs/Q_ctrl_SGD_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png", engine="kaleido")
 # %%
@@ -131,28 +129,21 @@ if n_trials_cbo>0:
     n_trial = -1
     study = optuna.create_study(direction='minimize')
     study.optimize(objective, n_trials=n_trials_cbo)
-    # %%
     params = study.best_params
     pickle.dump( params, open( f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "wb" ) )
-    # %%
     fig = optuna.visualization.plot_optimization_history(study)
     fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_history_{problem_suffix}_{model_suffix}.png", engine="kaleido")
-    # %%
     fig = optuna.visualization.plot_parallel_coordinate(study)
     fig.write_image(f"figs/Q_ctrl_CBO_hyperopt_parallel_plot_{problem_suffix}_{model_suffix}.png", engine="kaleido")
 
 # %%
 print("\n\nAVERAGING RESULTS...\n")
 if average:
-    common_args["epochs"]=2
     params = pickle.load(open(f"cache/sgd_params_{problem_suffix}_{model_suffix}.p", "rb"))
     τ_i, τ_f, τ_r = [params[x] for x in ['τ_i', 'τ_f', 'τ_f']]
-    
     def τ_k(k):
         return max(τ_i * τ_r ** k, τ_f*τ_i)
-    
     sgd_args = {"τ_k": τ_k, "M": M}
-    # %%
     def run_SGD_all():
         global n_run
         Qs, es = [], []
@@ -162,20 +153,17 @@ if average:
             Qs.append(q)
             es.append(e)
         return (Qs, es)
-    
-    # %%
     params = pickle.load(open(f"cache/cbo_params_{problem_suffix}_{model_suffix}.p", "rb"))
     η_i, η_f, η_r, τ_i, τ_f, τ_r, β_i, β_f, β_r = [params[x] for x in [
         'η_i', 'η_f', 'η_r', 'τ_i', 'τ_f', 'τ_r', 'β_i', 'β_f', 'β_r']]
-    early_stop = 2000
+
     def η_k(k): return max(η_i * η_r ** k, η_f*η_i)
     def τ_k(k): return max(τ_i * τ_r ** k, τ_f*τ_i)
     def β_k(k): return min(β_i * β_r ** k, β_f*β_i)
-    
-    
+
     cbo_args = {"N": N, "m": m, "τ_k": τ_k, "η_k": η_k,
-                "β_k": β_k, "δ": δ, "early_stop": early_stop}
-    # %%
+                "β_k": β_k, "δ": δ}
+
     def run_CBO_all():
         global n_run
         Qs, es = [], []
@@ -185,7 +173,7 @@ if average:
             Qs.append(q)
             es.append(e)
         return (Qs, es)
-    # %%
+
     all_data = pd.DataFrame(columns=["i", "x", "y", "sampling", "algo", "plot"])
     y_star = Q_ctrl_UR_SGD_star(x_ls.view(-1, 1))
     a_n = len(a_s)
@@ -234,8 +222,7 @@ if average:
                         }
                     )
                 )
-    
-    # %%
+
     g = sns.FacetGrid(
         data=all_data,
         col="plot",

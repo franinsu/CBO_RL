@@ -5,7 +5,8 @@ import pandas as pd
 import seaborn as sns
 # %%
 all_data = pd.DataFrame(columns=["i", "x", "y", "problem", "model"])
-for problem_suffix, model_suffix in zip(["continuous", "discete"], ["resnet", "tabular"]):
+# for problem_suffix, model_suffix in zip(["continuous", "discete"], ["resnet", "tabular"]):
+for problem_suffix, model_suffix in zip(["continuous"], ["resnet"]):
     if problem_suffix == "continuous":
         from continuous_example import *
         if model_suffix == "resnet":
@@ -29,7 +30,7 @@ for problem_suffix, model_suffix in zip(["continuous", "discete"], ["resnet", "t
         for α in α_ls:
             with torch.no_grad():
                 for param, param_i, param_f in zip(Q_net.parameters(), Q_net_0.parameters(), Q_net_comp.parameters()):
-                    param = α * param_f + (1-α) * param_i
+                    param += α * param_f + (1-α) * param_i - param
             e.append(Q_comp(Q_net, Q_net_comp, x_ls, n).detach().numpy().item())
         all_data = all_data.append(
             pd.DataFrame(

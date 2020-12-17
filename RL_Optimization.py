@@ -371,7 +371,7 @@ def Q_SGD_gen(update_step):
     def algo(S, A_idx, R, a_s, π, sample, new_Q_net=lambda: Q_Net(), M=1000, epochs=100, γ=0.9, τ_k=lambda k: 0.1*0.999**k, Q_net_comp=None, x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], writer=None, main_tag = "", scalar_tag= ""):
         Q_net = new_Q_net()
         if main_tag and scalar_tag:
-            print(f"Fitting {main_tag}, {scalar_tag}")
+            print(f"{main_tag}, {scalar_tag}")
         Rem = torch.tensor([])
         N = S.size()[0]
         i = 0
@@ -507,11 +507,11 @@ def Q_CBO_gen(L_f):
     def algo(S, A_idx, R, a_s, π, sample,
              new_Q_net=lambda: Q_Net(), N=30, m=1000, epochs=100, γ=0.9, λ=1., δ=1e-3,
              τ_k=lambda k: 0.1, η_k=lambda k: 0.5, β_k=lambda k: 10, Q_net_comp=None,
-             x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], early_stop=None, writer=None, main_tag="", scalar_tag=""):
+             x_ls=torch.linspace(0, 2*np.pi, 1000+1)[:-1], writer=None, main_tag="", scalar_tag=""):
         with torch.no_grad():
             Q_net = new_Q_net()
             if main_tag and scalar_tag:
-                print(f"Fitting {main_tag}, {scalar_tag}")
+                print(f"{main_tag}, {scalar_tag}")
             Q_θ = [new_Q_net() for _ in range(N)]
             rem = torch.tensor([])
             L = torch.empty(N)
@@ -525,8 +525,6 @@ def Q_CBO_gen(L_f):
             for k in trange(epochs, leave=False, position=0, desc="Epoch"):
                 A, rem = gen_batches(n-2, m, rem)
                 for A_θ in tqdm(A, leave=False, position=0, desc="Batch"):
-                    if early_stop and i > early_stop:
-                        continue
                     β = β_k(i)
                     τ = τ_k(i)
                     η = η_k(i)
@@ -556,7 +554,7 @@ def Q_CBO_gen(L_f):
                         if torch.isnan(err):
                             # e.append(float('nan'))
                             e.append(1e23)
-                            return Q_net, e
+                            return Q_net, torch.tensor(e)
                         if writer:
                             writer.add_scalars(main_tag,{scalar_tag:err},i)
                         e.append(err)
