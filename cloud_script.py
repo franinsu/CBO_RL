@@ -5,7 +5,7 @@ import pandas as pd
 args = sys.argv
 # args = "script discrete tabular 0 0 1 0 0 0 0 5 90".split(" ")
 _, problem_suffix, model_suffix= args[:3]
-resample, reQ, average, landscape,  cuda, n_trials_sgd, n_trials_cbo, n_runs, N = [int(a) for a in args[3:]]
+resample, reQ, average, landscape,  cuda, n_trials_sgd, n_trials_cbo, n_runs, N, epochs = [int(a) for a in args[3:]]
 # %%
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -60,7 +60,6 @@ if reQ:
 Q_ctrl_UR_SGD_star = torch.load(f"cache/Q_ctrl_UR_SGD_star_{problem_suffix}_{model_suffix}.pt")
 # %%
 M = m = 1000
-epochs = 2
 δ = 1e-5
 # %%
 print("\n\nHYPEROPT...\n")
