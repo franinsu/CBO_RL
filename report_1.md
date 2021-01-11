@@ -28,13 +28,13 @@ $$
 f\left(s_{m}, s_{m+1}, \theta\right)=R\left(s_{m}\right)+\gamma V\left(s_{m+1} ; \theta\right)-V\left(s_{m} ; \theta\right), \quad \tau=0.1, \quad M=1000
 $$
 
-- The SGD algorithm runs for a single epoch with the same initialization $\theta_0$. 
-- Error at step $k$, $e_k$ is defined as $e_k=\| V(\cdot,\theta_k)-V^*\|_{L^2}$. 
+- The SGD algorithm runs for a single epoch with the same initialization $\theta_0$.
+- Error at step $k$, $e_k$ is defined as $e_k=\| V(\cdot,\theta_k)-V^*\|_{L^2}$.
 - Reference $V^*(s)$ is computed by running Algorithm 1 for 10 epochs based on longer trajectory $\{s_m\}_{m=1}^{10^7}$, with $\tau=0.01,$ $M=1000$.
 - We visualize relative error, $\log_{10}(e_k/e_0)$.
 
 - **NB**, I made one modification from the paper:
-  - Since $V(s,\theta)\mapsto V(s,\theta)+\delta$ is a symmetry in $f$, then a better way of measuring error, $e_k$, is 
+  - Since $V(s,\theta)\mapsto V(s,\theta)+\delta$ is a symmetry in $f$, then a better way of measuring error, $e_k$, is
 
 $$
 e_k=\| V(\cdot,\theta_k)-V^* - \mu_k \|_2,\quad \mu_k = \int V(\cdot,\theta_k)-V^*
@@ -49,7 +49,7 @@ $$
 
 CBO Paramaters:
 $$
-\begin{align}
+\begin{aligned}
 &N = 30\\
 &m = 1000\\
 &\text{epochs} = 1 \\
@@ -57,16 +57,16 @@ $$
 &η_k = \max(0.5\cdot 0.998^k,0.01) && \text{Learning rate}\\
 &τ_k =  \max(0.1\cdot0.998^k,0.01) && \text{Exploration rate}\\
 &β_k =  \max(30\cdot1.002^k,80) && \text{1/Characteristic energy}
-\end{align}
+\end{aligned}
 $$
-![](/home/franinsu/Documents/Lexing/CBO_RL/figs/V_SGD_vs_CBO_yuhua.png)
+![](figs/old/V_SGD_vs_CBO_yuhua.png)
 
 ## $Q$-evaluation and control, continuous state space (4.1.)
 
 ### Outline
 
 - MDP with a continuous state space $\mathbb S = \{s \in (0, 2\pi]\}$.
-- Dynamics described by 
+- Dynamics described by
 
 $$
 \begin{aligned}
@@ -106,7 +106,7 @@ $$
 CBO Parameters:
 
 $$
-\begin{align}
+\begin{aligned}
 &N = 90\\
 &m = 1000\\
 &\text{epochs} = 1 \\
@@ -114,14 +114,14 @@ $$
 &η_k = \max(0.6\cdot 0.9992^k,0.075) && \text{Learning rate}\\
 &τ_k =  \max(0.8\cdot0.9992^k,0.3) && \text{Exploration rate}\\
 &β_k =  \max(8\cdot1.002^k,20) && \text{1/Characteristic energy}
-\end{align}
+\end{aligned}
 $$
 
-![](/home/franinsu/Documents/Lexing/CBO_RL/figs/Q_ctrl_SGD_vs_CBO.png)
+![](figs/old/Q_ctrl_SGD_vs_CBO.png)
 
 To visualize the stability of the algorithms, we can show statistics (mean and sd) on 10 runs:
 
-![ ](/home/franinsu/Documents/Lexing/CBO_RL/figs/Q_ctrl_SGD_vs_CBO_summary_3.png)
+![ ](figs/old/Q_ctrl_SGD_vs_CBO_summary_3.png)
 
 ## Future Work
 
