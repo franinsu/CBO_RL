@@ -275,6 +275,7 @@ if landscape:
         )
     ax = sns.lineplot(data=all_data, x="x", y="y", units="i",
                 alpha=0.7, hue="problem", estimator=None)
+    ax.set(xlabel=r'$\alpha$', ylabel=r"$e(\alpha\theta^* + (1-\alpha)\theta)$")
     ax.figure.savefig(f"figs/Q_ctrl_landscape_plot_{problem_suffix}_{model_suffix}.png")
 # %%
 writer.close()

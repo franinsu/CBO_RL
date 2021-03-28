@@ -5394,3 +5394,13 @@ W1218 00:45:44.972349 140613110925056 plugin_event_multiplexer.py:263] Deleting 
 TensorFlow installation not found - running with reduced feature set.
 Serving TensorBoard on localhost; to expose to the network, use a proxy or pass --bind_all
 TensorBoard 2.3.0 at http://localhost:6009/ (Press CTRL+C to quit)
+Traceback (most recent call last):
+  File "./cloud_script.py", line 11, in <module>
+    from torch.utils.tensorboard import SummaryWriter
+  File "/Users/francescoinsulla/miniconda3/lib/python3.8/site-packages/torch/utils/tensorboard/__init__.py", line 1, in <module>
+    import tensorboard
+ModuleNotFoundError: No module named 'tensorboard'
+Traceback (most recent call last):
+  File "./cloud_script.py", line 13, in <module>
+    import optuna
+ModuleNotFoundError: No module named 'optuna'

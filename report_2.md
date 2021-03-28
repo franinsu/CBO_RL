@@ -138,9 +138,9 @@ $$
 
 - Perform hyperparameter optimization, using optuna, fixing $M=1000, \delta = 10^{-5}$, running 150 trials, and $90$ particles for CBO, taking error of UR as loss. $3$ Variables for SGD, $9$ for CBO.
 
-- Average $10$ instances using best hyperparameters found, $\hat\theta$, plotting $Q(\cdot,\cdot;\theta)$, and $e_k=\|Q(\cdot, \cdot;\theta^*)-Q(\cdot, \cdot;\theta_k)\|$.
+- Average $10$ instances using best hyperparameters found, $\hat\theta$, plotting $Q(\cdot,\cdot;\theta)$, and $e_k=e(\theta_k)=\|Q(\cdot, \cdot;\theta^*)-Q(\cdot, \cdot;\theta_k)\|$.
 
-- Visualize optimization landscape by evaluating error on affine combination of parameters of $\theta^*$ and random initialization parameters ($J(\alpha\theta^*+(1-\alpha)\theta)$ vs $\alpha\in[0,1]$)
+- Visualize optimization landscape by evaluating error on affine combination of parameters of $\theta^*$ and random initialization parameters ($e(\alpha\theta^*+(1-\alpha)\theta)$ vs $\alpha\in[0,1]$) *since $e$ is a sort of "distance", then we expect it to be linear near $\alpha=1$* 
 
 Procedure takes ~20 hours (running on 10th gen Intel i9 processor)
 
