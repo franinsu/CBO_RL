@@ -261,7 +261,7 @@ if landscape:
             with torch.no_grad():
                 for param, param_i, param_f in zip(Q_net.parameters(), Q_net_0.parameters(), Q_net_comp.parameters()):
                     param += α * param_f + (1-α) * param_i - param
-            e.append(Q_comp(Q_net, Q_net_comp, x_ls.view(-1,1), n).detach().numpy().item())
+            e.append(Q_comp(Q_net, Q_net_comp, x_ls.view(-1,1), n).detach().numpy().item()**2)
         all_data = all_data.append(
             pd.DataFrame(
                 {
@@ -275,7 +275,8 @@ if landscape:
         )
     ax = sns.lineplot(data=all_data, x="x", y="y", units="i",
                 alpha=0.7, hue="problem", estimator=None)
-    ax.set(xlabel=r'$\alpha$', ylabel=r"$e(\alpha\theta^* + (1-\alpha)\theta)$")
+    ax.set(xlabel=r'$\alpha$', ylabel=r"$e(\alpha\theta^* + (1-\alpha)\theta)^2$")
+    ax.legend([],[], frameon=False)
     ax.figure.savefig(f"figs/Q_ctrl_landscape_plot_{problem_suffix}_{model_suffix}.png")
 # %%
 writer.close()
