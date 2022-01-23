@@ -39,7 +39,7 @@
 \DeclareMathOperator{\Image}{Image}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[RO]{CBO+BFF applied to Q-control}
+\fancyhead[RO]{CBO + BFF Applied to Q-Control}
 \fancyhead[LO]{Insulla, Zhu, Ying}
 \fancyfoot[RO]{Page \thepage}
 \renewcommand{\headrulewidth}{1pt}
@@ -49,14 +49,14 @@
 \newtheorem{theorem}{Theorem}
 \setlength{\droptitle}{-10em}
 \usepackage{lmodern}
-\title{CBO + BFF applied to Q-control}
+\title{CBO + BFF Applied to Q-Control}
 \author{Francesco Insulla, Yuhua Zhu, Lexing Ying}
 \begin{document}
 \maketitle
 
 \section{Introduction}
 
-Recently there has been progress in applying a novel gradient-free optimization heuristic to high dimensional machine learning, called Consensus Based Optimization (CBO) \cite{carrillo2020consensusbased}, and on a novel sampling method for Reinforcement Learning (RL), called Borrowing from Future (BFF) \cite{zhu2020borrowing}. Given the advantages CBO and BFF individually, we explore if there is an advantage to using both. We first introduce Bellman residual minimization (BRM) for Q-control and outline CBO vs Stochastic Gradient Descent (SGD) and BFF vs UR (Unrealistic) vs DS (Double) sampling. Next we prove some results for the difference between UR and BFF in CBO. We then setup a numerical example is continuous and discrete statespace, outline a procedure, and analyze the results. Finally, we give an upper bound on the difference in CBO's parameter modification using BFF vs UR. While CBO+BFF appears advantageous in the discrete case, this is not the case for the continuous case, likely attributable to the higher dimensionality of the hyperparameter space for CBO and/or the highly non-convex loss function for the continuous case.
+There has been progress in applying a novel gradient-free optimization heuristic to high dimensional machine learning, called Consensus Based Optimization (CBO) \cite{carrillo2020consensusbased}, and on a novel sampling method for Reinforcement Learning (RL), called Borrowing from Future (BFF) \cite{zhu2020borrowing}. Given the advantages CBO and BFF individually, we explore if there is an advantage to using both. We first introduce Bellman residual minimization (BRM) for Q-control and outline CBO vs Stochastic Gradient Descent (SGD) and BFF vs UR (Unrealistic) vs DS (Double) sampling. Next we prove some results for the difference between UR and BFF in CBO. We then setup a numerical example is continuous and discrete statespace, outline a procedure, and analyze the results. Finally, we give an upper bound on the difference in CBO's parameter modification using BFF vs UR. While CBO+BFF appears advantageous in the discrete case, this is not the case for the continuous case, likely attributable to the higher dimensionality of the hyperparameter space for CBO and/or the highly non-convex loss function for the continuous case.
 
 \section{Models}
 
@@ -75,14 +75,14 @@ Solving this minimization problem requires an optimization scheme and a sampling
 
 For the optimization schemes, we consider Stochastic Gradient Descent (SGD) and Consensus Based Optimization (CBO).
 
-At iteration $k$, with batch $B_k$, samples $\{(s_m, a_m, s_{m+1},s_{m+1}')\}_{m\in B_k}$, parameters $\theta_k$, and learning rate $\tau_k$, SGD is formulated by the following update equation
+At iteration $k$, with batch $B_k$, samples $\{(s_m, a_m, s_{m+1},s_{m+1}')\}_{m\in B_k}$, parameters $\theta_k$, and learning rate $\tau_k$, SGD is formulated by the following update equations
 
 \begin{align*}
   \hat F_k &= \frac{1}{|B_k|}\sum_{m\in B_k} j^{\text{ctrl}}(s_m, a_m, s_{m+1};\theta_k )\nabla_\theta j^{\text{ctrl}}(s_m, a_m, s_{m+1}';\theta_k)\\
-  \Delta\theta_k &= -\tau_k \hat F_k 
+  \Delta\theta_k &= -\tau_k \hat F_k
 \end{align*}
 
-At iteration $k$, with batch $B_k$, samples $\{(s_m, a_m, s_{m+1},s_{m+1}')\}_{m\in B_k}$, particle parameters $\{\theta_k\}_{j=1}^N$, learning rate $\eta_k$, diffusion rate $\tau_k$, and inverse temperature $\beta_k$, CBO is formulated by the following update equation
+At iteration $k$, with batch $B_k$, samples $\{(s_m, a_m, s_{m+1},s_{m+1}')\}_{m\in B_k}$, particle parameters $\theta_k = \{\theta_k^j\}_{j=1}^N$, learning rate $\eta_k$, diffusion rate $\tau_k$, and energy scale (inverse temperature) $\beta_k$, CBO is formulated by the following update equations
 
 \begin{align*}
   \hat J_k^j &= \frac{1}{|B_k|}\sum_{m\in B_k} j^{\text{ctrl}}(s_m, a_m, s_{m+1};\theta_{k}^j) j^{\text{ctrl}}(s_m, a_m, \tilde s_{m+1};\theta_{k}^j)\\
@@ -96,7 +96,7 @@ $$\Delta s_m = \mu(s_m, a_m) \epsilon + \sigma_m \sqrt \epsilon z_m$$ with $a_m\
 
 \section{Theoretical Results}
 \subsection{Difference in UR vs BFF in CBO}
-We consider the CBO model with UR and BFF sampling and prove resulting relating to convergence. The approach is adapted from \cite{zhu2020borrowing}, where a similar analysis is done for SGD.
+We consider the CBO model with UR and BFF sampling and prove results relating to convergence. The approach is adapted from \cite{zhu2020borrowing}, where a similar analysis is done for SGD.
 
 Taking $N\to \infty$, $\eta\to 0$, the mean field limit of CBO model is given by the following SDE with corresponding Fokker-Planck equation
 \begin{align*}
@@ -115,14 +115,14 @@ As $\bar \Theta$ depends on the sample $s,a$, we approximate the process as
 %   \partial_t \rho &= \lambda \nabla \cdot (\bb E_{s,a}[\Theta - \bar \Theta] \rho ) + \frac{1}{2}\tau^2 \sum_{i=1}^d\partial_{ii}(\bb E_{s,a}[(\Theta - \bar \Theta)_{i}^2] \rho)
 % \end{align*}
 
-We leave the proof of that the approximation is correct for future study. Intuitively, similarly to how SGD is approximated, $\bar \Theta = \bb E_{s,a}[\bar \Theta] + \eta^{1/2}\bb V_{s,a}[\bar \Theta]^{1/2}\frac{dW_0}{dt}$.
-Henceforth, we use $\delta$ denote any difference between a UR and BFF quantity, such as $\delta J(\Theta)= J(s,\Theta) - J(s',\Theta)$.
+We leave the proof of that the approximate SDE is correct for future study. Intuitively, similarly to how SGD is approximated, $\bar \Theta = \bb E_{s,a}[\bar \Theta] + \eta^{1/2}\bb V_{s,a}[\bar \Theta]^{1/2}\frac{dW_0}{dt}$.
+Henceforth, we use $\delta$ denote any difference between a UR and BFF quantity which will be `primed', ex. $\delta J(\Theta)= J(s,\Theta) - J(s',\Theta)$. We'll use the fact that $\delta$ is linear.
 
 \begin{lemma}
   Fix $t$. Assume
-  $\sup_{s\in \bb S,a\in \bb A}|\bb E_a[\mu(s,a)|s] - \mu(s,a)| \leq  v$,
-  $\sup_{s\in \bb S}\| \bar \Theta(s)\| \leq  m$,
-  $\sup_{s\in \bb S}\|\partial_s \bar \Theta(s)\| \leq m_s$.
+  $\sup_{s\in \bb S,a\in \bb A}|\mu(s,a) - \bb E_a[\mu(s,a)|s] | \leq  v$,
+  $\sup_{s\in \bb S}\| \Theta - \bar \Theta(s)\| \leq  m$, and
+  $\sup_{s\in \bb S}\|\partial_s \bar \Theta(s)\| \leq m_s$
   % \begin{align*}
   % &\sup_{s\in \bb S,a\in \bb A}|\bb E[\mu(s,a)|s] - \mu(s,a)| \leq  v,\\
   % &\sup_{s\in \bb S}\|\bar \Theta(s)\| \leq  m,\\
@@ -135,10 +135,12 @@ Henceforth, we use $\delta$ denote any difference between a UR and BFF quantity,
   %   |\delta \bb V[\bar \Theta(\tilde s_{m+1})]| &\leq 2 \epsilon C\bb C[\bar \Theta(s_m), \partial_s \bar \Theta(s_m)]+ O(\epsilon^2)
   % \end{align*}
   \begin{align*}
-    \|\delta \bb E_{s,a}[\bar \Theta]\| &\leq \epsilon v m_s + o(\epsilon)\\
+    |\delta \bb E_{s,a}[(\Theta - \bar \Theta)_i]| &\leq \epsilon v m_s + o(\epsilon)\\
+    |\delta \bb E_{s,a}[(\Theta - \bar \Theta)^2_i]| &\leq \epsilon v m m_s + o(\epsilon)\\
+    |\delta \bb E_{s,a}[(\Theta - \bar \Theta)_i]^2| &\leq \epsilon v m m_s + o(\epsilon)
     % |\delta \bb V[\bar \Theta(\tilde s_{m+1})]| &\leq 2 \epsilon v u u_s + O(\epsilon^2)\\
     % \|\delta \bb E_{s,a}[(\Theta - \bar \Theta)_i^2]\| &\leq 2 \epsilon v m m_s + O(\epsilon^2)
-    |\delta (\Theta - \bb E_{s,a}[\bar \Theta])_i^2| &\leq \epsilon v m m_s + o(\epsilon)
+    % |\delta \bb E_{s,a}[\Theta - \bar \Theta]_i^2| &\leq \epsilon v m m_s + o(\epsilon)
   \end{align*}
 
   % \color{red}
@@ -172,7 +174,7 @@ Henceforth, we use $\delta$ denote any difference between a UR and BFF quantity,
   % \end{align*}
 \end{lemma}
 \begin{proof}
-  Taylor expanding $\bar \Theta(\tilde s)$ about $s_m$ we find 
+  Taylor expanding $\bar \Theta(\tilde s_{m+1})$ about $s_m$ we find 
   \begin{align*}
     \bar \Theta(\tilde s_{m+1}) &= \bar \Theta(s_m) + (\tilde s_{m+1} - s_m)\partial_s \bar \Theta(s_m) + \tfrac{1}{2}(\tilde s_{m+1} - s_m)^2\partial^2_s \bar \Theta(s_m) + o(\epsilon)
   \end{align*}
@@ -183,9 +185,9 @@ Henceforth, we use $\delta$ denote any difference between a UR and BFF quantity,
   \end{align*}
   Thus
   \begin{align*}
-    \bb E[\bar \Theta(\tilde s_{m+1})|a_m,s_m] &= \bar \Theta(s_m) - \epsilon \mu(s_m,a_m)\partial_s \bar \Theta(s_m) + \tfrac{1}{2}(\sigma^2 \epsilon) \partial^2_s \bar \Theta(s_m) + o(\epsilon)\\
-    \bb E[\bar \Theta(\tilde s_{m+1}')|a_m,s_m] &= \bar \Theta(s_m) - \epsilon \bb E[\mu(s_m,a_{m+1})|s_m]\partial_s \bar \Theta(s_m) + \tfrac{1}{2}(\sigma^2 \epsilon) \partial^2_s \bar \Theta(s_m) + o(\epsilon)\\
-    \delta \bb E[ \bar \Theta |a_m,s_m] &= \epsilon(\bb E[\mu(s_m,a_{m+1})|s_m]-\mu(s_m,a_m))\partial_s \bar \Theta(s_m) + o(\epsilon)
+    \bb E[\bar \Theta(\tilde s_{m+1})|a_m,s_m] &= \bar \Theta(s_m) + \epsilon \mu(s_m,a_m)\partial_s \bar \Theta(s_m) + \tfrac{1}{2}(\sigma^2 \epsilon) \partial^2_s \bar \Theta(s_m) + o(\epsilon)\\
+    \bb E[\bar \Theta(\tilde s_{m+1}')|a_m,s_m] &= \bar \Theta(s_m) + \epsilon \bb E[\mu(s_m,a_{m+1})|s_m]\partial_s \bar \Theta(s_m) + \tfrac{1}{2}(\sigma^2 \epsilon) \partial^2_s \bar \Theta(s_m) + o(\epsilon)\\
+    \delta \bb E[ \Theta - \bar \Theta |a_m,s_m] &= \epsilon(\bb E[\mu(s_m,a_{m+1})|s_m] - \mu(s_m,a_m))\partial_s \bar \Theta(s_m) + o(\epsilon)
   \end{align*}
   Taylor expanding $\pi(a|s)$ about $s_{m+1}$ we have
   \begin{align*}
@@ -196,40 +198,42 @@ Henceforth, we use $\delta$ denote any difference between a UR and BFF quantity,
   \end{align*}
   Thus
   \begin{align*}
-    \|\delta \bb E_{s,a}[\bar \Theta]\| \leq \epsilon v m_s + o(\epsilon)
+    |\delta \bb E_{s,a}[(\Theta - \bar \Theta)_i]| \leq \epsilon v m_s + o(\epsilon)
   \end{align*}
-  Similarly we find
+  A similar approach yields the other inequalities.
+  % Similarly we find
+  % % \color{gray}
+  % % \begin{align*}
+  % %   \bb V[\bar \Theta(\tilde s_{m+1})|a_m,s_m] &=
+  % %   \sigma^2\epsilon(\partial_s \bar \Theta(s_m))^2 +
+  % %   2\sigma^4\epsilon^2 (\partial_s^2 \bar \Theta(s_m))^2 +
+  % %   o(\epsilon^2)\\
+  % %   \bb V[\bar \Theta(\tilde s_{m+1}')|a_m,s_m] &=
+  % %   (\epsilon^2 \bb V[\mu(s_m, a_{m+1})|s_m]+ \sigma^2\epsilon )(\partial_s \bar \Theta(s_m))^2+
+  % %   2\sigma^4\epsilon^2 (\partial_s^2 \bar \Theta(s_m))^2 +
+  % %   o(\epsilon^2)
+  % %   % \delta \bb V[\bar \Theta|a_m,  s_m] &= \epsilon^2 \bb V[\mu(s_m, a_{m+1})|s_m] (\partial_s \bar \Theta(s_m))^2 + o(\epsilon^2)
+  % % \end{align*}
+  % % Using the previous result,
+  % % \begin{align*}
+  % %   \delta \bb V[\bar \Theta(\tilde s_{m+1})]
+  % %   &= \delta \bb V[\bb E[\bar \Theta(\tilde s_{m+1})|s_m,a_m]
+  % %   + \delta \bb E[\bb V[\bar \Theta(\tilde s_{m+1})|s_m,a_m]\\
+  % %   \delta \bb E[\bb V[\bar \Theta(\tilde s_{m+1})|s_m,a_m]
+  % %   &= O(\epsilon^2)\\
+  % %   \delta \bb V[\bb E[\bar \Theta(\tilde s_{m+1})|s_m,a_m]
+  % %   &= 2\epsilon (\bb C[\bar \Theta(s_m),  \mu(s_m,a_m)\partial_s \bar \Theta(s_m)]-\bb C[\bar \Theta(s_m),  \bb E[\mu(s_m,a_{m+1})|s_m]\partial_s \bar \Theta(s_m)]) + O(\epsilon^2)\\
+  % %   &= 2\epsilon \bb E[\mu(s_m,a_m) - \bb E[\mu(s_m,a_{m+1})|s_m]]\bb C[\bar \Theta(s_m), \partial_s \bar \Theta(s_m)]+ O(\epsilon^2)
+  % % \end{align*}
+  % % \color{black}
   % \begin{align*}
-  %   \bb V[\bar \Theta(\tilde s_{m+1})|a_m,s_m] &= 
-  %   \sigma^2\epsilon(\partial_s \bar \Theta(s_m))^2 + 
-  %   2\sigma^4\epsilon^2 (\partial_s^2 \bar \Theta(s_m))^2 + 
-  %   o(\epsilon^2)\\
-  %   \bb V[\bar \Theta(\tilde s_{m+1}')|a_m,s_m] &= 
-  %   (\epsilon^2 \bb V[\mu(s_m, a_{m+1})|s_m]+ \sigma^2\epsilon )(\partial_s \bar \Theta(s_m))^2+
-  %   2\sigma^4\epsilon^2 (\partial_s^2 \bar \Theta(s_m))^2 + 
-  %   o(\epsilon^2)
-  %   % \delta \bb V[\bar \Theta|a_m,  s_m] &= \epsilon^2 \bb V[\mu(s_m, a_{m+1})|s_m] (\partial_s \bar \Theta(s_m))^2 + o(\epsilon^2)
+  %   \delta\left(\bb E[ \Theta - \bar \Theta |a_m,s_m]_i^2 \right) = \epsilon(\Theta - \bar \Theta(s_m))_i (\bb E[\mu(s_m,a_{m+1})|s_m]-\mu(s_m,a_m))\partial_s \bar \Theta_i(s_m) + O(\epsilon^2)
   % \end{align*}
-  % Using the previous result,
+  % Thus
   % \begin{align*}
-  %   \delta \bb V[\bar \Theta(\tilde s_{m+1})] 
-  %   &= \delta \bb V[\bb E[\bar \Theta(\tilde s_{m+1})|s_m,a_m]
-  %   + \delta \bb E[\bb V[\bar \Theta(\tilde s_{m+1})|s_m,a_m]\\
-  %   \delta \bb E[\bb V[\bar \Theta(\tilde s_{m+1})|s_m,a_m] 
-  %   &= O(\epsilon^2)\\
-  %   \delta \bb V[\bb E[\bar \Theta(\tilde s_{m+1})|s_m,a_m]
-  %   &= 2\epsilon (\bb C[\bar \Theta(s_m),  \mu(s_m,a_m)\partial_s \bar \Theta(s_m)]-\bb C[\bar \Theta(s_m),  \bb E[\mu(s_m,a_{m+1})|s_m]\partial_s \bar \Theta(s_m)]) + O(\epsilon^2)\\
-  %   &= 2\epsilon \bb E[\mu(s_m,a_m) - \bb E[\mu(s_m,a_{m+1})|s_m]]\bb C[\bar \Theta(s_m), \partial_s \bar \Theta(s_m)]+ O(\epsilon^2)
+  %   % \delta \bb E_{s,a}[(\Theta - \bar \Theta(\tilde s_{m+1}))_i^2]\| &\leq 3 \epsilon v m m_s + O(\epsilon^2)
+  %   |\delta \bb E_{s,a}[\Theta - \bar \Theta]_i^2| &\leq \epsilon v m m_s + o(\epsilon)
   % \end{align*}
-  % And
-  \begin{align*}
-    \delta \bb E[ (\Theta - \bar \Theta)_i |a_m,s_m]^2 = \epsilon(\Theta - \bar \Theta(s_m))_i (\bb E[\mu(s_m,a_{m+1})|s_m]-\mu(s_m,a_m))\partial_s \bar \Theta_i(s_m) + O(\epsilon^2)
-  \end{align*}
-  Thus
-  \begin{align*}
-    % \delta \bb E_{s,a}[(\Theta - \bar \Theta(\tilde s_{m+1}))_i^2]\| &\leq 3 \epsilon v m m_s + O(\epsilon^2)
-    |\delta (\Theta - \bb E_{s,a}[\bar \Theta])_i^2| &\leq \epsilon v m m_s + o(\epsilon)
-  \end{align*}
 \end{proof}
   % \begin{lemma}
   %   Assume ....
@@ -760,33 +764,37 @@ Henceforth, we use $\delta$ denote any difference between a UR and BFF quantity,
 %   \partial_t \rho &= \eta \nabla \cdot (\bb E[\Theta - \bar \Theta]\rho ) + \frac{1}{2}\tau^2\eta \sum_{i=1}^d\partial_{ii}(\bb V[(\Theta - \bar \Theta)_i] \rho)
 % \end{align*}
 % Note $\bb V[(\Theta - \bar \Theta)_i] = \bb V[\Theta] + (\bb E[\Theta]-\bar \Theta)_i^2 $.
-Suppose $\bb V_{s,a}[\bar \Theta] = \xi^2 I$ and $\tau = 0$. 
+Suppose $\bb V_{s,a}[\bar \Theta] = \xi^2 I$ and $\tau = 0$.
 Note then that $\rho_\infty(\Theta) = \tfrac{1}{Z} e^{-\alpha \|r(\Theta)\|^2}$
-is a steady state solution, where $r(\Theta)= \Theta - \bb E_{s,a}[\bar \Theta]$, $\alpha = \frac{1}{\lambda \eta \xi^2}$, and $Z = (\pi/\alpha)^{1/2}$ is the normalization constant. 
-% Taking $\tau^2\ll \lambda$ we can find a first order approximation,
-% \begin{align*}
-%   \rho_\infty(\Theta) = \tfrac{1}{Z} e^{-\alpha\|r(\Theta)\|^2}\left(C+\tfrac{\tau^2\alpha}{\lambda} (-\|r(\Theta)\|^2+\tfrac{\alpha}{2}\|r(\Theta)\|^4)\right) + o(\tfrac{\tau^2}{\lambda})
-% \end{align*}
-% where $C$ is degenerate. The above $\rho_\infty$ is always normalizable. To guarantee positivity, we require $C\geq \tfrac{\tau^2}{2\lambda}$.
-We also notice that the difference pdf $\delta\rho$ satisfies
-\begin{align*}
-  \partial_t \delta \rho &=
-  \lambda \nabla \cdot ((\Theta -\bb E_{s,a}[ \bar \Theta])\delta  \rho - \delta \bb E_{s,a}[\bar \Theta]  \rho')
-  + \frac{1}{2} \sum_{i=1}^d\partial_{ii}(\tau^2(\Theta - \bb E_{s,a}[\bar \Theta])_{i}^2 \delta \rho + \tau^2 \delta (\Theta - \bb E_{s,a}[\bar \Theta])_{i}^2 \rho' + \eta \lambda^2 \xi^2 \delta \rho )
-\end{align*}
-Consider the norm
-\begin{align*}
-  \|\delta \rho\|_* = \int \frac{(\delta \rho)^2}{\rho_\infty}\, d\Theta
-\end{align*}
-Note that $\lim_{|\Theta|\to \infty} \|r(\Theta)\|^2 = \infty$, $Z <\infty$, $\lim_{|\Theta|\to \infty}(\tfrac{1}{2}|\nabla \|r(\Theta)\|^2| - \Delta \|r(\Theta)\|^2 ) = \infty $.
+is a steady state solution, where $r(\Theta)= \Theta - \bb E_{s,a}[\bar \Theta]$, $\alpha = \frac{1}{\lambda \eta \xi^2}$, and $Z = (\pi/\alpha)^{1/2}$ is the normalization constant, making it a Gaussian measure.
+
+% Note that $\lim_{|\Theta|\to \infty} \|r(\Theta)\|^2 = \infty$, $Z <\infty$, $\lim_{|\Theta|\to \infty}(\tfrac{1}{2}|\nabla \|r(\Theta)\|^2| - \Delta \|r(\Theta)\|^2 ) = \infty $.
 This guarantees that $\rho_\infty$ satisfies the Poincar\'e inequality
 \begin{align*}
   \int f^2 \rho_\infty d\theta \leq \zeta (\alpha) \int (\nabla f)^2 \rho_\infty d\theta, \quad \forall \int f d\theta = 0
 \end{align*}
 where $\zeta (\alpha)$ is the Poincar\'e constant which typically has $\partial_\alpha \zeta< 0 $.
+
+\color{blue}
+% Taking $\tau^2\ll \lambda$ we can find a first order approximation,
+% \begin{align*}
+%   \rho_\infty(\Theta) = \tfrac{1}{Z} e^{-\alpha\|r(\Theta)\|^2}\left(C+\tfrac{\tau^2\alpha}{\lambda} (-\|r(\Theta)\|^2+\tfrac{\alpha}{2}\|r(\Theta)\|^4)\right) + o(\tfrac{\tau^2}{\lambda})
+% \end{align*}
+% where $C$ is degenerate. The above $\rho_\infty$ is always normalizable. To guarantee positivity, we require $C\geq \tfrac{\tau^2}{2\lambda}$.
+
+We also notice that $\delta\rho$ satisfies
+\begin{align*}
+  \partial_t \delta \rho &=
+  \lambda \nabla \cdot (\bb E_{s,a}[\Theta - \bar \Theta]\delta  \rho - \delta \bb E_{s,a}[\bar \Theta]  \rho')
+  + \frac{1}{2} \sum_{i=1}^d\partial_{ii}(\tau^2\bb E_{s,a}[\Theta - \bar \Theta] _{i}^2 \delta \rho + \tau^2 \delta \bb E_{s,a}[\Theta - \bar \Theta]_{i}^2 \rho' + \eta \lambda^2 \xi^2 \delta \rho )
+\end{align*}
+Consider the norm
+\begin{align*}
+  \|\delta \rho\|_* = \int \frac{(\delta \rho)^2}{\rho_\infty}\, d\Theta = \int \rho_\infty \left(\frac{\delta \rho}{\rho_\infty} \right)^2\, d\Theta 
+\end{align*}
 \color{red}
 $$
-\| \delta \rho(t)\|_* \leq \|\rho(0) - \rho^\infty\|_*...
+\| \delta \rho(t)\|_* \leq \|\rho(0) - \rho^\infty\|_* e^{-\gamma t}
 $$
 % Ultimately, we shall provide a bound for the decay of some norm on $\delta p(t,\cdot)$. To do this, first we find estimates for $\delta \bb E[\bar \Theta]$ and $\delta\bb V[\bar \Theta]$.
 
@@ -794,6 +802,9 @@ $$
   % \color{red} Long run behavior
 % \end{theorem}
 \begin{proof}
+  \begin{align*}
+    \tfrac{1}{2}\partial_t \|\delta \rho\|_* = \int \rho_\infty \left(\frac{\delta \rho}{\rho_\infty} \right)\left(\frac{\partial_t \delta \rho}{\rho_\infty} \right)
+  \end{align*}
 \end{proof}
 \color{black}
 \section{Numerical Example}
